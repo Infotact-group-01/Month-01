@@ -101,6 +101,16 @@ flowchart TD
     style Policy_Enforcer fill:#bfb,stroke:#333,stroke-width:2px
 ```
 
+## Networking Overview
+
+![OSI Model Diagram](file:///C:/Users/harsh/.gemini/antigravity/brain/eca6c444-9a44-421d-8cbe-c22f1f6cc6dd/osi_model_diagram_1779287971467.png)
+*Figure: OSI Model with security considerations*
+
+![Network Topology Diagram](file:///C:/Users/harsh/.gemini/antigravity/brain/eca6c444-9a44-421d-8cbe-c22f1f6cc6dd/network_topology_diagram_1779288230991.png)
+*Figure: Common network topologies*
+
+```
+
 ## Implementation Details
 
 - **OSINT Collector**: Python script using `requests` and `BeautifulSoup` to pull JSON/HTML feed data.
@@ -159,3 +169,5 @@ while True:
 | Insider threat misuse | Role‑based access, audit logs |
 | Scaling firewall rules | Rate‑limit rule updates, batch processing |
 | Data privacy | Store only indicator hashes, no personal data |
+
+
