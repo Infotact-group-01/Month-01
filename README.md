@@ -2,9 +2,6 @@
 
 A Threat Intelligence Platform coupled with a Dynamic Security Policy Enforcer designed for financial institutions. It aggregates open‑source threat feeds, normalizes data in MongoDB, feeds a SIEM, and automatically updates firewall rules in real time.
 
-![OSI Model Diagram](WEEK-01/DAY-02/osi_model.png)
-*Figure: OSI Model with security considerations*
-
 ## Week‑1 Learning Summaries
 
 - **Day 1 – Introduction to Cybersecurity** – Overview of core cybersecurity concepts and the CIA triad. [Day 1 summary](WEEK-01/DAY-01/Day1_Intro_Cybersecurity_Summary.md)
