@@ -1,0 +1,1 @@
+print("Initializing Week 1 Threat Intelligence Platform...")
