@@ -1,3 +1,6 @@
 {
-  "TestFeed": "file://test_indicators.txt"
+  "TestFeed": "file://test_indicators.txt",
+  "EmergingThreats_IPs": "https://rules.emergingthreats.net/blockrules/compromised-ips.txt",
+  "FeodoTracker_IPs": "https://feodotracker.abuse.ch/downloads/ipblocklist.txt",
+  "URLhaus_URLs": "https://urlhaus.abuse.ch/downloads/text_online/"
 }

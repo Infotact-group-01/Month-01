@@ -7,20 +7,17 @@ import datetime
 from .fetch_feeds import fetch_all_feeds
 from .models import Indicator
 from .db import setup_database, insert_indicators
+from .es_client import setup_elasticsearch, index_indicators
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s"
-)
 logger = logging.getLogger(__name__)
 
 def process_feeds():
     """Main workflow to fetch, validate, and store OSINT indicators."""
     logger.info("Starting TIP ingestion process...")
 
-    # 1. Ensure DB is set up with indices
+    # 1. Ensure DB and ES are set up with indices
     setup_database()
+    setup_elasticsearch()
 
     # 2. Fetch raw data from feeds
     raw_indicators = fetch_all_feeds()
@@ -38,9 +35,14 @@ def process_feeds():
             raw["observed_at"] = now
 
         try:
-            # Validate indicator
+            # Validate indicator and calculate risk
             indicator_model = Indicator(**raw)
-            valid_indicators.append(indicator_model.model_dump())
+            indicator_model.calculate_risk()
+            if hasattr(indicator_model, "model_dump"):
+                valid_indicators.append(indicator_model.model_dump())
+            else:
+                import dataclasses
+                valid_indicators.append(dataclasses.asdict(indicator_model))
         except Exception as e:
             # Depending on how strict we want to be, we could log every validation error
             # For now, we skip bad indicators silently or with debug
@@ -48,10 +50,12 @@ def process_feeds():
 
     logger.info(f"Successfully validated {len(valid_indicators)} out of {len(raw_indicators)} indicators.")
 
-    # 4. Insert into database
+    # 4. Insert into database and Elasticsearch
     if valid_indicators:
         inserted = insert_indicators(valid_indicators)
         logger.info(f"Ingestion complete. Inserted {inserted} new indicators into the database.")
+        es_inserted = index_indicators(valid_indicators)
+        logger.info(f"Elasticsearch sync complete. Indexed {es_inserted} indicators.")
     else:
         logger.warning("No valid indicators to insert.")
 

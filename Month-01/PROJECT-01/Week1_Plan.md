@@ -106,7 +106,3 @@ python -c "from pymongo import MongoClient; import os; client = MongoClient(os.g
 ---
 
 **Note:** No web front‑end or website is required for this week. All work is performed via command‑line scripts and a local MongoDB instance.
-
----
-
-*Prepared for **Project 1 – Finance & Banking – Advanced Threat Intelligence Platform** – Week 1*
