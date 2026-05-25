@@ -1,224 +1,422 @@
-# Threat Intelligence Platform (TIP) - Project 1
+# Threat Intelligence Platform (TIP) — Project 01
 
-Advanced threat intelligence aggregation and automated security policy enforcement for financial institutions.
+> Automated cybersecurity threat intelligence aggregation, risk scoring, and SIEM visualisation for financial institutions.
 
-## Quick Start
+---
 
-```bash
-# 1. Activate virtual environment
-source venv/Scripts/activate  # Windows: .\venv\Scripts\Activate.ps1
+## ✅ Project Status
 
-# 2. Install dependencies
-pip install -r requirements.txt
+| Phase | Description | Status |
+|---|---|---|
+| **Week 1** | OSINT Ingestion & Database Design | ✅ Done |
+| **Week 2** | Normalization, Risk Scoring & SIEM Integration | ✅ Done |
 
-# 3. Run OSINT ingestion
-python -m src.ingest
+---
 
-# 4. Check results
-python -m src.fetch_feeds
-```
+## 📋 What This Project Does
 
-## Project Structure
+This platform automatically:
+1. **Collects** real threat data from 6 sources (3 free public feeds + 3 live APIs)
+2. **Cleans and validates** every indicator into a standard format
+3. **Calculates a risk score** (0–100) for each threat based on source, tags, and confidence
+4. **Stores** everything in MongoDB (deduplicated — no repeated entries)
+5. **Pushes** all data into Elasticsearch so you can search and visualise it in Kibana
+
+**Result:** A live, searchable threat intelligence dashboard you can open in your browser.
+
+---
+
+## 🗂️ Project Structure
 
 ```
 PROJECT-01/
-├── src/
-│   ├── __init__.py
-│   ├── fetch_feeds.py       # OSINT feed fetcher
-│   ├── ingest.py            # Main ingestion orchestrator
-│   ├── models.py            # Pydantic data models
-│   ├── db.py                # MongoDB utilities
-│   └── config.py            # Configuration & environment
-├── feeds.json               # Feed source definitions
-├── .env                     # Environment variables (MongoDB connection)
-├── requirements.txt         # Python dependencies
-├── test_indicators.txt      # Test data (104 sample indicators)
-├── SCHEMA.md                # Database schema documentation
-└── Week1_Plan.md            # Week 1 deliverables and roadmap
+│
+├── .env                     ← Secret settings (API keys, database URLs)
+├── feeds.json               ← List of free text-based threat feed URLs
+├── requirements.txt         ← All Python packages needed
+├── docker-compose.yml       ← Starts Elasticsearch + Kibana with one command
+├── load_demo_data.py        ← Loads realistic demo data into Elasticsearch
+│
+├── src/                     ← All Python source code
+│   ├── config.py            ← Loads settings, connects to MongoDB
+│   ├── models.py            ← Defines threat indicator shape + risk scoring
+│   ├── fetch_feeds.py       ← Downloads & parses all threat feeds + live APIs
+│   ├── db.py                ← Saves data into MongoDB
+│   ├── es_client.py         ← Pushes data into Elasticsearch
+│   └── ingest.py            ← MASTER script — runs the full pipeline
+│
+├── data/
+│   └── demo_dataset.json    ← 54 hand-crafted realistic demo indicators
+│
+├── tests/                   ← Automated test suite (42 tests)
+│
+├── SCHEMA.md                ← Full database schema documentation
+├── PROJECT_GUIDE.md         ← Complete client-facing explanation of the project
+└── README.md                ← This file
 ```
 
-## Features
+---
 
-### OSINT Ingestion
-- Fetches threat data from multiple OSINT feeds
-- Supports HTTP/HTTPS URLs and local files
-- Simple line-by-line indicator parsing
-- Automatic indicator type classification (IP/domain/URL)
+## ⚙️ Prerequisites (What You Need Before Starting)
 
-### Data Normalization
-- Pydantic-based schema validation
-- Automatic confidence scoring
-- Timestamp normalization
-- Tag categorization
+Make sure you have these installed on your PC before doing anything:
 
-### MongoDB Integration
-- Automatic deduplication via unique indexes
-- Bulk insert with duplicate handling
-- Schema-enforced document structure
-- In-memory fallback (mongomock) when MongoDB offline
+| Tool | Version | Check if installed |
+|---|---|---|
+| Python | 3.11 or higher | `python --version` |
+| pip | (comes with Python) | `pip --version` |
+| Docker Desktop | Latest | Open the Docker Desktop app |
+| Git | Any | `git --version` (optional) |
 
-## Configuration
+---
 
-### Environment Variables (`.env`)
+## 🚀 How to Set This Up on Your PC (Step by Step)
+
+Follow these steps **in order**. Do not skip any.
+
+---
+
+### Step 1 — Get the Project Folder
+
+You have two options to get the project on your PC:
+
+**Option A — Download as ZIP (easiest)**
+1. Download the project ZIP file
+2. Right-click the ZIP → **Extract All**
+3. Choose a folder you'll remember, for example:
+   - `C:\Projects\TIP` on Windows
+   - Your Desktop is also fine
+
+**Option B — Clone with Git**
+```powershell
+git clone https://github.com/your-org/threat-intelligence-platform.git
+```
+
+Once you have the folder, open **PowerShell** and navigate into it.  
+Replace the path below with wherever **you** saved the folder:
+
+```powershell
+# Example if you extracted to C:\Projects\TIP
+cd C:\Projects\TIP\PROJECT-01
+
+# Example if you saved it on your Desktop
+cd C:\Users\YourName\Desktop\PROJECT-01
+
+# Example if you cloned with Git
+cd threat-intelligence-platform\PROJECT-01
+```
+
+> 💡 **All commands from this point forward must be run from inside the PROJECT-01 folder.**  
+> You can confirm you are in the right place by running `dir` — you should see files like `requirements.txt`, `docker-compose.yml`, and the `src` folder.
+
+---
+
+### Step 2 — Install Python Dependencies
+
+This installs all required Python packages:
+
+```powershell
+pip install -r requirements.txt
+```
+
+Wait for it to finish. You should see:
+```
+Successfully installed elasticsearch-8.x.x pymongo pydantic requests ...
+```
+
+---
+
+### Step 3 — Set Up Your API Keys (in `.env`)
+
+Open the `.env` file in the project root. It looks like this:
+
 ```env
 MONGODB_URI=mongodb://localhost:27017/
 MONGODB_DB=tip
 MONGODB_COLLECTION=indicators
+ELASTICSEARCH_URI=http://localhost:9200
+ABUSEIPDB_API_KEY=your_key_here
+OTX_API_KEY=your_key_here
 ```
 
-### Feed Sources (`feeds.json`)
-```json
-{
-  "SourceName": "https://example.com/feed"
-}
+**Replace `your_key_here`** with your actual API keys. Get them free from:
+
+| Key | Where to get it (free) |
+|---|---|
+| `ABUSEIPDB_API_KEY` | https://www.abuseipdb.com/register → API → Create Key |
+| `OTX_API_KEY` | https://otx.alienvault.com → Profile → Settings → OTX Key |
+
+> ⚠️ Never share your `.env` file — it contains private API keys. It is already listed in `.gitignore` so it will never be uploaded to GitHub.
+
+---
+
+### Step 4 — Start Elasticsearch and Kibana (via Docker)
+
+Make sure **Docker Desktop is open and running** first. Then run:
+
+```powershell
+docker-compose up -d
 ```
 
-Supported protocols:
-- `https://` - HTTPS feeds
-- `http://` - HTTP feeds
-- `file://` - Local files (relative to project root)
-
-## Data Schema
-
-**Collection:** `indicators`
-
-**Sample Document:**
-```json
-{
-  "indicator": "192.0.2.45",
-  "type": "ip",
-  "source": "TestFeed",
-  "observed_at": "2026-05-21T10:30:00Z",
-  "confidence": 85,
-  "tags": []
-}
+You should see:
+```
+✔ Container tip-elasticsearch  Started
+✔ Container tip-kibana         Started
 ```
 
-**Unique Index:** `(indicator, source)` - prevents duplicates from same source
+> ⏳ Wait about **60 seconds** after this. Kibana takes time to fully start up.
 
-See [SCHEMA.md](SCHEMA.md) for complete documentation.
+You can verify Elasticsearch is running:
 
-## Usage Examples
+```powershell
+python -c "import urllib.request, json; r=urllib.request.urlopen('http://localhost:9200'); print(json.loads(r.read())['version']['number'])"
+```
 
-### Run Full Ingestion Pipeline
-```bash
+Expected output: `8.16.0`
+
+---
+
+### Step 5 — Run the Ingestion Pipeline
+
+This is the main command. It does everything:
+- Fetches data from all 6 sources
+- Validates and risk-scores every indicator
+- Inserts into MongoDB
+- Syncs everything to Elasticsearch
+
+```powershell
 python -m src.ingest
 ```
-Output:
+
+Expected output:
 ```
 Starting TIP ingestion process...
-Database setup complete. Unique index on (indicator, source) is ready.
+Database setup complete.
+Elasticsearch index 'indicators' already exists.
 Fetching TestFeed
-Fetched total 104 indicators
-Successfully validated 104 out of 104 indicators.
-Ingestion complete. Inserted 104 new indicators into the database.
+Fetching EmergingThreats_IPs
+Fetching FeodoTracker_IPs
+Fetching URLhaus_URLs
+Fetching AbuseIPDB blacklist (limit=500) ...
+AbuseIPDB: fetched 500 live malicious IPs.
+Fetching AlienVault OTX subscribed pulses (max=20) ...
+AlienVault OTX: fetched 796 indicators from 20 pulses.
+Fetched total 13312 indicators
+Successfully validated 13312 out of 13312 indicators.
+Ingestion complete. Inserted 13299 new indicators into the database.
+Elasticsearch sync: 13312 indexed, 0 failed.
 ```
 
-### Fetch Only (No Database Insert)
-```bash
-python -m src.fetch_feeds
+---
+
+### Step 6 — Open Kibana and Explore Your Data
+
+Open your browser and go to:
+
+**👉 http://localhost:5601**
+
+**First-time setup (do this once):**
+1. Click the **☰ menu** (top-left)
+2. Go to **Stack Management** → **Data Views** (or Index Patterns)
+3. Click **Create data view**
+4. Name: `indicators`
+5. Time field: `observed_at`
+6. Click **Save data view to Kibana**
+
+**Now explore:**
+- Go to **☰ menu → Discover**
+- All 13,000+ threat indicators are now visible
+- Use the search bar to filter:
+  - `source: AbuseIPDB` → Live malicious IPs
+  - `source: AlienVault` → Real campaign threat data
+  - `risk_score > 90` → Critical threats only
+  - `type: hash` → Malware file hashes
+
+---
+
+## 🔁 How to Use It Day-to-Day
+
+### Refresh threat data (run any time)
+```powershell
+python -m src.ingest
 ```
-Output: JSON array of all fetched indicators
+Run this whenever you want fresh data. It only adds **new** indicators — duplicates are automatically skipped.
 
-### Query MongoDB
-```bash
-python -c "from pymongo import MongoClient; 
-client = MongoClient('mongodb://localhost:27017/'); 
-print('Total indicators:', client.tip.indicators.count_documents({}))"
+---
+
+### Load the demo dataset (for presentations)
+```powershell
+python load_demo_data.py
+```
+Loads 54 hand-crafted, realistic indicators covering 6 attack campaigns (LockBit, APT29, Emotet, QakBot, etc.) — perfect for showing to the company.
+
+---
+
+### Start / Stop the ELK Stack
+```powershell
+# Start (after PC restart)
+docker-compose up -d
+
+# Stop (keeps all data)
+docker-compose stop
+
+# Stop and delete all data (full reset)
+docker-compose down -v
 ```
 
-## Week 1 Acceptance Criteria
+---
 
-✅ **Environment ready** - Python 3.11+, MongoDB/mongomock configured  
-✅ **Feed list defined** - feeds.json contains valid source URLs  
-✅ **Ingestion script runs** - `python -m src.ingest` completes without errors  
-✅ **Records inserted** - 104+ indicators successfully ingested  
-✅ **Data deduplication** - Unique index prevents duplicate indicators  
-✅ **Schema documented** - See SCHEMA.md  
+### Run automated tests
+```powershell
+pytest tests/ -v
+```
+Expected: `42 passed`
 
-## Dependencies
+---
 
-- **requests** - HTTP client for feed fetching
-- **beautifulsoup4** - HTML parsing (for future feed parsers)
-- **pymongo** - MongoDB driver
-- **python-dotenv** - Environment variable loading
-- **pydantic** - Data validation and models
-- **mongomock** - In-memory MongoDB fallback for testing
+## 📡 Data Sources
 
-## Architecture Overview
+| Source | Type | What It Provides |
+|---|---|---|
+| EmergingThreats | Free text feed | Compromised IP addresses |
+| FeodoTracker | Free text feed | Botnet (Emotet, QakBot) C2 IPs |
+| URLhaus | Free text feed | Active malicious URLs |
+| **AbuseIPDB** | **Live API** | 500 high-confidence malicious IPs with country + category tags |
+| **AlienVault OTX** | **Live API** | Real threat pulses — IPs, domains, URLs, file hashes with campaign names |
+| TestFeed | Local file | Sample indicators for testing |
+
+---
+
+## 📊 Risk Scoring
+
+Every indicator gets a score from **0 to 100**:
 
 ```
-Feeds (JSON/TXT)
-    ↓
-fetch_feeds.py (HTTP GET or file read)
-    ↓
-parse_plain_iocs() (line-by-line parsing)
-    ↓
-Indicator (Pydantic validation)
-    ↓
-insert_indicators() (MongoDB bulk insert)
-    ↓
-Unique Index (deduplication)
-    ↓
-indicators collection
+risk_score = confidence + (number of tags × 5) + source weight
+             ─────────────────────────────────────────────────
+             Maximum capped at 100
 ```
 
-## Future Work (Week 2+)
+| Source | Weight |
+|---|---|
+| AbuseIPDB | +20 |
+| VirusTotal | +15 |
+| AlienVault | +10 |
+| Others | +5 |
 
-- Risk scoring schema
-- SIEM integration (ELK Stack)
-- Advanced feed parsers (JSON, CSV, XML)
-- API key authentication
-- Rate limiting
-- Dynamic Policy Enforcer daemon
-- Kibana dashboards
-- Rollback mechanism
+| Score | Severity | Meaning |
+|---|---|---|
+| 90–100 | 🔴 Critical | Block immediately |
+| 75–89 | 🟠 High | Investigate urgently |
+| 50–74 | 🟡 Medium | Monitor closely |
+| 0–49 | 🟢 Low | Log and observe |
 
-## Testing
+---
 
-### Run Ingestion with Test Data
-```bash
+## 🗃️ Data Schema
+
+Every indicator stored in the system looks like this:
+
+```json
+{
+  "indicator":   "185.220.101.47",
+  "type":        "ip",
+  "source":      "AbuseIPDB",
+  "observed_at": "2026-05-25T09:47:23+00:00",
+  "confidence":  100,
+  "tags":        ["ssh-brute-force", "brute-force"],
+  "risk_score":  100,
+  "country":     "NL"
+}
+```
+
+| Field | Description |
+|---|---|
+| `indicator` | The actual threat value (IP / domain / URL / file hash) |
+| `type` | Category: `ip`, `domain`, `url`, or `hash` |
+| `source` | Which feed it came from |
+| `observed_at` | Timestamp when it was collected |
+| `confidence` | How reliable the source is (0–100) |
+| `tags` | Labels like `malware`, `phishing`, `botnet` |
+| `risk_score` | Calculated danger level (0–100) |
+
+See [SCHEMA.md](SCHEMA.md) for full schema documentation.
+
+---
+
+## 🛠️ Troubleshooting
+
+### "Real MongoDB not running! Falling back to mongomock"
+This is **normal and expected**. The system works without MongoDB installed — it uses an in-memory database automatically. Data won't persist between runs, but everything else works fine.
+
+---
+
+### Kibana shows no data after running the pipeline
+1. Make sure Docker is running: `docker-compose up -d`
+2. Make sure the pipeline ran: `python -m src.ingest`
+3. In Kibana → change the time range to **Last 30 days** or **Last 1 year**
+4. Make sure your Data View is set up (Stack Management → Data Views → `indicators`)
+
+---
+
+### Elasticsearch connection error
+Make sure Docker Desktop is running and wait 60 seconds after starting it:
+```powershell
+docker-compose up -d
+# Wait 60 seconds, then:
 python -m src.ingest
 ```
 
-### Check Data Quality
-```bash
-# Count total indicators
-python -m src.ingest | grep "Inserted"
+---
 
-# View first 5 records
-python -c "from src.config import get_db_collection; 
-import json; 
-docs = list(get_db_collection().find().limit(5)); 
-print(json.dumps(docs, default=str, indent=2))"
-```
+### API key errors (AbuseIPDB / OTX)
+- Check your `.env` file has the correct keys with no spaces
+- Test AbuseIPDB: `curl -H "Key: YOUR_KEY" https://api.abuseipdb.com/api/v2/check?ipAddress=8.8.8.8`
+- If keys expire, get new ones from abuseipdb.com and otx.alienvault.com
 
-## Troubleshooting
+---
 
-### MongoDB Connection Fails
-```
-WARNING: Real MongoDB not running! Falling back to 'mongomock' (in-memory database) for testing.
-```
-→ This is normal. mongomock provides an in-memory fallback. For production, ensure MongoDB is running.
-
-### Duplicate Indicators
-→ Check the unique index on `(indicator, source)`. Duplicates from the same source will be skipped.
-
-### Missing Dependencies
-```bash
+### Missing Python packages
+```powershell
 pip install -r requirements.txt --upgrade
 ```
 
-## Documentation
+---
 
-- [SCHEMA.md](SCHEMA.md) - Complete database schema documentation
-- [Week1_Plan.md](Week1_Plan.md) - Week 1 deliverables and roadmap
-- [../Project_01_TIP_Overview.md](../Project_01_TIP_Overview.md) - Full project overview
+## ✅ Week 1 — Completed Deliverables
 
-## License
+| Task | Result |
+|---|---|
+| Python environment set up | Python 3.12 + pip + Docker Desktop |
+| Connected to 3+ OSINT feeds | EmergingThreats, FeodoTracker, URLhaus + TestFeed |
+| Data cleaned and normalized | Pydantic model with type classification |
+| MongoDB deduplication | Unique index on `(indicator, source)` |
+| 100+ records inserted | **13,312 indicators** ingested ✅ |
+| Schema documented | `SCHEMA.md` complete |
 
-Proprietary - Finance & Banking Security Initiative
+---
 
-## Contact
+## ✅ Week 2 — Completed Deliverables
 
-Security Team - security@organization.local
+| Task | Result |
+|---|---|
+| Risk scoring schema designed | `risk_score` field (0–100) on every indicator |
+| Risk calculation implemented | `calculate_risk()` — confidence + tags + source weight |
+| Live API feeds added | AbuseIPDB (500 IPs/run) + AlienVault OTX (796+ IOCs/run) |
+| Elasticsearch set up | Docker container running on port 9200, v8.16.0 |
+| Kibana SIEM running | Visual dashboard on port 5601 |
+| Dual-write pipeline | Every indicator → MongoDB **and** Elasticsearch |
+| ES sync result | **13,312 indexed, 0 failed** ✅ |
+| Demo dataset created | 54 indicators across 6 real attack campaigns |
+| Automated tests passing | **42 tests, all passing** ✅ |
+
+---
+
+## 📚 Documentation
+
+| File | Description |
+|---|---|
+| `README.md` | This file — setup and usage guide |
+| `SCHEMA.md` | Full database schema with field definitions |
+| `PROJECT_GUIDE.md` | Complete client-facing project explanation |
+| `data/demo_dataset.json` | Realistic demo indicators for presentations |
