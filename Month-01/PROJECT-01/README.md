@@ -78,36 +78,51 @@ Follow these steps **in order**. Do not skip any.
 
 ### Step 1 — Get the Project Folder
 
-You have two options to get the project on your PC:
+> ℹ️ **Only the `PROJECT-01` folder is needed.** The GitHub repository contains other folders for separate projects — you do not need them. Everything required to run this platform is inside `PROJECT-01`.
 
-**Option A — Download as ZIP (easiest)**
-1. Download the project ZIP file
-2. Right-click the ZIP → **Extract All**
-3. Choose a folder you'll remember, for example:
-   - `C:\Projects\TIP` on Windows
-   - Your Desktop is also fine
+You have two options:
+
+---
+
+**Option A — Download as ZIP (recommended, easiest)**
+
+1. Go to: **https://github.com/Infotact-group-01/Month-01**
+2. Click the green **`<> Code`** button → **Download ZIP**
+3. Right-click the downloaded ZIP → **Extract All**
+4. Open the extracted folder — navigate into `Month-01 → Month-01 → PROJECT-01`
+5. That `PROJECT-01` folder is your working directory — copy it anywhere you like, for example `C:\Projects\TIP`
+
+---
 
 **Option B — Clone with Git**
-```powershell
-git clone https://github.com/your-org/threat-intelligence-platform.git
-```
-
-Once you have the folder, open **PowerShell** and navigate into it.  
-Replace the path below with wherever **you** saved the folder:
 
 ```powershell
-# Example if you extracted to C:\Projects\TIP
-cd C:\Projects\TIP\PROJECT-01
-
-# Example if you saved it on your Desktop
-cd C:\Users\YourName\Desktop\PROJECT-01
-
-# Example if you cloned with Git
-cd threat-intelligence-platform\PROJECT-01
+git clone https://github.com/Infotact-group-01/Month-01.git
 ```
 
-> 💡 **All commands from this point forward must be run from inside the PROJECT-01 folder.**  
-> You can confirm you are in the right place by running `dir` — you should see files like `requirements.txt`, `docker-compose.yml`, and the `src` folder.
+This downloads the full repository. Once done, navigate into the project:
+
+```powershell
+cd Month-01\Month-01\PROJECT-01
+```
+
+---
+
+After either option, open **PowerShell** and make sure you are inside the `PROJECT-01` folder.  
+Run `dir` to confirm — you should see these files:
+
+```
+requirements.txt
+docker-compose.yml
+feeds.json
+.env
+src\
+tests\
+data\
+```
+
+> 💡 **All commands from this point forward must be run from inside the `PROJECT-01` folder.**
+
 
 ---
 
