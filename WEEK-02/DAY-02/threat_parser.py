@@ -44,3 +44,23 @@ def parse_and_filter_threats():
 
 if __name__ == "__main__":
     parse_and_filter_threats()
+
+
+from threat_scoring import calculate_risk
+
+risk_result = calculate_risk(parsed_threat)
+
+parsed_threat["risk_score"] = risk_result["risk_score"]
+
+parsed_threat["severity"] = risk_result["severity"]
+
+
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
+logging.info(f"Threat scored: {parsed_threat}")
+
+
+if parsed_threat["risk_score"] > 80:
+        print("Block this IP address")
