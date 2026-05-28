@@ -10,8 +10,11 @@
 |---|---|---|
 | **Week 1** | OSINT Ingestion & Database Design | ✅ Done |
 | **Week 2** | Normalization, Risk Scoring & SIEM Integration | ✅ Done |
+<<<<<<< HEAD
 | **Week 3** | Policy Enforcer Daemon (auto-blocking via Windows Firewall) | ✅ Done |
 | **Week 4** | Rollback API + Kibana Dashboard + Final Docs | ✅ Done |
+=======
+>>>>>>> 229f71947df386995f1a8233a0fd88e723de7441
 
 ---
 
@@ -23,10 +26,15 @@ This platform automatically:
 3. **Calculates a risk score** (0–100) for each threat based on source, tags, and confidence
 4. **Stores** everything in MongoDB (deduplicated — no repeated entries)
 5. **Pushes** all data into Elasticsearch so you can search and visualise it in Kibana
+<<<<<<< HEAD
 6. **Auto-blocks** high-risk IPs (risk ≥ 90) using Windows Firewall rules — zero human intervention needed
 7. **Provides a REST API** for SOC analysts to review and undo any auto-block with a full audit trail
 
 **Result:** A fully automated, end-to-end threat intelligence and enforcement platform — from OSINT collection to firewall blocking.
+=======
+
+**Result:** A live, searchable threat intelligence dashboard you can open in your browser.
+>>>>>>> 229f71947df386995f1a8233a0fd88e723de7441
 
 ---
 
@@ -47,19 +55,27 @@ PROJECT-01/
 │   ├── fetch_feeds.py       ← Downloads & parses all threat feeds + live APIs
 │   ├── db.py                ← Saves data into MongoDB
 │   ├── es_client.py         ← Pushes data into Elasticsearch
+<<<<<<< HEAD
 │   ├── ingest.py            ← MASTER script — runs the full pipeline
 │   ├── enforcer.py          ← Week 3: Policy Enforcer Daemon (auto-blocking)
 │   └── rollback_api.py      ← Week 4: Flask REST API for SOC rollback control
+=======
+│   └── ingest.py            ← MASTER script — runs the full pipeline
+>>>>>>> 229f71947df386995f1a8233a0fd88e723de7441
 │
 ├── data/
 │   └── demo_dataset.json    ← 54 hand-crafted realistic demo indicators
 │
+<<<<<<< HEAD
 ├── kibana/
 │   └── dashboard_export.ndjson  ← Pre-built Kibana dashboard (import once)
 │
 ├── logs/                    ← Auto-created: enforcer.log + rollback.log
 │
 ├── tests/                   ← Automated test suite (96 tests)
+=======
+├── tests/                   ← Automated test suite (42 tests)
+>>>>>>> 229f71947df386995f1a8233a0fd88e723de7441
 │
 ├── SCHEMA.md                ← Full database schema documentation
 ├── PROJECT_GUIDE.md         ← Complete client-facing explanation of the project
@@ -292,6 +308,7 @@ docker-compose down -v
 
 ---
 
+<<<<<<< HEAD
 ### Run the Policy Enforcer (Week 3)
 ```powershell
 # Simulate only — safe, no real firewall changes (good for demos)
@@ -389,6 +406,55 @@ risk_score = confidence + (number of tags × 5) + source weight
 
 ---
 
+=======
+### Run automated tests
+```powershell
+pytest tests/ -v
+```
+Expected: `42 passed`
+
+---
+
+## 📡 Data Sources
+
+| Source | Type | What It Provides |
+|---|---|---|
+| EmergingThreats | Free text feed | Compromised IP addresses |
+| FeodoTracker | Free text feed | Botnet (Emotet, QakBot) C2 IPs |
+| URLhaus | Free text feed | Active malicious URLs |
+| **AbuseIPDB** | **Live API** | 500 high-confidence malicious IPs with country + category tags |
+| **AlienVault OTX** | **Live API** | Real threat pulses — IPs, domains, URLs, file hashes with campaign names |
+| TestFeed | Local file | Sample indicators for testing |
+
+---
+
+## 📊 Risk Scoring
+
+Every indicator gets a score from **0 to 100**:
+
+```
+risk_score = confidence + (number of tags × 5) + source weight
+             ─────────────────────────────────────────────────
+             Maximum capped at 100
+```
+
+| Source | Weight |
+|---|---|
+| AbuseIPDB | +20 |
+| VirusTotal | +15 |
+| AlienVault | +10 |
+| Others | +5 |
+
+| Score | Severity | Meaning |
+|---|---|---|
+| 90–100 | 🔴 Critical | Block immediately |
+| 75–89 | 🟠 High | Investigate urgently |
+| 50–74 | 🟡 Medium | Monitor closely |
+| 0–49 | 🟢 Low | Log and observe |
+
+---
+
+>>>>>>> 229f71947df386995f1a8233a0fd88e723de7441
 ## 🗃️ Data Schema
 
 Every indicator stored in the system looks like this:
@@ -488,6 +554,7 @@ pip install -r requirements.txt --upgrade
 
 ---
 
+<<<<<<< HEAD
 ## ✅ Week 3 — Completed Deliverables
 
 | Task | Result |
@@ -521,6 +588,8 @@ pip install -r requirements.txt --upgrade
 
 ---
 
+=======
+>>>>>>> 229f71947df386995f1a8233a0fd88e723de7441
 ## 📚 Documentation
 
 | File | Description |
@@ -529,4 +598,7 @@ pip install -r requirements.txt --upgrade
 | `SCHEMA.md` | Full database schema with field definitions |
 | `PROJECT_GUIDE.md` | Complete client-facing project explanation |
 | `data/demo_dataset.json` | Realistic demo indicators for presentations |
+<<<<<<< HEAD
 | `kibana/dashboard_export.ndjson` | Pre-built Kibana dashboard — import once |
+=======
+>>>>>>> 229f71947df386995f1a8233a0fd88e723de7441

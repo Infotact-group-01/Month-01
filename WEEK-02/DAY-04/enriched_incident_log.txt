@@ -1,0 +1,2 @@
+=== ENRICHED SECURITY INCIDENT LOG ===
+[2026-05-24 21:15:34] [ALERT] C2 Located in US | Target: 50.16.16.211:443 | Malware: QakBot
