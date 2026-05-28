@@ -15,6 +15,8 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 ELASTICSEARCH_URI = os.getenv("ELASTICSEARCH_URI", "http://localhost:9200")
+ES_USER           = os.getenv("ES_USER", "elastic")
+ELASTIC_PASSWORD  = os.getenv("ELASTIC_PASSWORD", "")
 INDEX_NAME = "indicators"
 
 INDEX_MAPPINGS = {
@@ -33,9 +35,12 @@ INDEX_MAPPINGS = {
 
 
 def get_es_client() -> Elasticsearch | None:
-    """Return an Elasticsearch client, or None on failure."""
+    """Return an authenticated Elasticsearch client, or None on failure."""
     try:
-        es = Elasticsearch(ELASTICSEARCH_URI, request_timeout=10)
+        kwargs = {"request_timeout": 10}
+        if ELASTIC_PASSWORD:
+            kwargs["basic_auth"] = (ES_USER, ELASTIC_PASSWORD)
+        es = Elasticsearch(ELASTICSEARCH_URI, **kwargs)
         if not es.ping():
             logger.warning("Elasticsearch ping failed — SIEM sync disabled.")
             return None
