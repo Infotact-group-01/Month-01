@@ -1,6 +1,24 @@
 version: '3.8'
 
 services:
+  mongodb:
+    image: mongo:7.0
+    container_name: tip-mongodb
+    environment:
+      - MONGO_INITDB_DATABASE=tip
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodata:/data/db
+    networks:
+      - tip-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.16.0
     container_name: tip-elasticsearch
@@ -39,6 +57,8 @@ services:
 
 volumes:
   esdata:
+    driver: local
+  mongodata:
     driver: local
 
 networks:
