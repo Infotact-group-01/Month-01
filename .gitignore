@@ -1,0 +1,6 @@
+
+# Git Auto-Sync utility files
+git_auto_sync.py
+git_sync_config.json
+git_sync.log
+start_sync.ps1
