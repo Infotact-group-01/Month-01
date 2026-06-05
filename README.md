@@ -17,7 +17,7 @@ A Threat Intelligence Platform coupled with a Dynamic Security Policy Enforcer d
 - **Day 4 – Threat Intelligence Enrichment & Logging** – GeoIP enrichment and incident logs. [Summary](Month-01/LEARNING_SESSION/WEEK-2/DAY-4.md) | [Code](WEEK-02/DAY-04/threat_enricher.py)
 - **Day 5 – Threat Severity Scoring & Critical Alert Filtering** – Prioritization. [Summary](Month-01/LEARNING_SESSION/WEEK-2/DAY-5.md) | [Code](WEEK-02/DAY-05/threat_filter.py)
 - **Day 6 – Interactive Threat Search Console** – Search by malware family/country. [Summary](Month-01/LEARNING_SESSION/WEEK-2/DAY-6.md) | [Code](WEEK-02/DAY-06/threat_console.py)
-- **Day 7 – Dynamic Threat Scoring Engine** – Live dynamic scoring calculation. [Code](WEEK-02/DAY-07/threat_scoring.py)
+- **Day 7 – Dynamic Threat Scoring Engine** – Live dynamic scoring calculation.[Summary](Month-01/LEARNING_SESSION/WEEK-2/DAY-7.md) | [Code](WEEK-02/DAY-07/threat_scoring.py)
 
 ---
 
