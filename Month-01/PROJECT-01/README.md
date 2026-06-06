@@ -1,5 +1,7 @@
 # Threat Intelligence Platform (TIP) — Project 01
 
+[![CI — TIP Test Suite](https://github.com/Infotact-group-01/Month-01/actions/workflows/test.yml/badge.svg)](https://github.com/Infotact-group-01/Month-01/actions/workflows/test.yml)
+
 > Automated cybersecurity threat intelligence aggregation, risk scoring, and SIEM visualisation for financial institutions.
 
 ---
@@ -38,6 +40,7 @@ PROJECT-01/
 ├── .env                     ← Secret settings (API keys, database URLs)
 ├── feeds.json               ← List of free text-based threat feed URLs
 ├── requirements.txt         ← All Python packages needed
+├── Makefile                 ← Convenience targets for Linux/CI
 ├── docker-compose.yml       ← Starts Elasticsearch + Kibana with one command
 ├── load_demo_data.py        ← Loads realistic demo data into Elasticsearch
 │
@@ -493,7 +496,7 @@ pip install -r requirements.txt --upgrade
 | Task | Result |
 |---|---|
 | Policy Enforcer Daemon | `src/enforcer.py` — queries ES, applies Windows Firewall rules |
-| Windows Firewall integration | `netsh advfirewall` — blocks IPs automatically |
+| Windows Firewall integration | `netsh advfirewall` — blocks IPs bidirectionally (IN + OUT) |
 | Risk threshold configurable | Default `risk_score ≥ 90`; override via `--threshold` flag |
 | Dry-run mode | `--dry-run` flag — simulates blocking safely for demos |
 | State persistence | `enforcer_state.json` — tracks all blocked IPs across restarts |
@@ -513,11 +516,13 @@ pip install -r requirements.txt --upgrade
 | Individual rollback | `POST /api/rollback/<ip>` — removes firewall rule + logs |
 | Bulk rollback | `POST /api/rollback-all` — safety confirm field required |
 | Audit trail API | `GET /api/audit` — full history of blocks and rollbacks |
+| Authentication | `X-API-Key` required on all endpoints if `ROLLBACK_API_KEY` set |
+| Metrics API | `GET /api/stats` — aggregate counts by source and risk tier |
 | Rollback audit log | `logs/rollback.log` — every analyst action recorded |
 | PowerShell launcher | `run_api.ps1` with `-DryRun` and `-Port` flags |
 | Kibana dashboard | `kibana/dashboard_export.ndjson` — 7 charts, import once |
 | 31 new unit tests | Flask test client — no real network or firewall needed |
-| **Total test suite** | **96 tests, all passing ✅** |
+| **Total test suite** | **161 tests, all passing ✅** |
 
 ---
 

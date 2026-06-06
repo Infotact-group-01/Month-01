@@ -1,10 +1,9 @@
-requests
-beautifulsoup4
-pymongo
-python-dotenv
-pydantic
-mongomock
-pytest
+requests>=2.31.0
+pymongo>=4.6.0
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+mongomock>=4.1.0
+pytest>=7.4.0
 elasticsearch>=8.0.0,<9.0.0
 flask>=3.0.0
-flask-cors
+flask-cors>=4.0.0

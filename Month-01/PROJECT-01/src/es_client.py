@@ -58,13 +58,13 @@ def setup_elasticsearch() -> None:
 
     try:
         es.indices.get(index=INDEX_NAME)
-        logger.info(f"Elasticsearch index '{INDEX_NAME}' already exists.")
+        logger.info("Elasticsearch index '%s' already exists.", INDEX_NAME)
     except NotFoundError:
-        # Index doesn't exist — create it
-        es.indices.create(index=INDEX_NAME, body=INDEX_MAPPINGS)
-        logger.info(f"Created Elasticsearch index '{INDEX_NAME}'.")
+        # Index doesn't exist — create it with explicit mappings (no deprecated body= kwarg)
+        es.indices.create(index=INDEX_NAME, mappings=INDEX_MAPPINGS["mappings"])
+        logger.info("Created Elasticsearch index '%s'.", INDEX_NAME)
     except Exception as e:
-        logger.error(f"Failed to setup Elasticsearch index: {e}")
+        logger.error("Failed to setup Elasticsearch index: %s", e)
 
 
 def index_indicators(indicators: list[dict]) -> int:

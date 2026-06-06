@@ -1,6 +1,9 @@
 """Tests for src.fetch_feeds — IOC classification & feed parsing."""
 
 import pytest
+import requests
+from unittest.mock import patch, MagicMock
+
 from src.fetch_feeds import _classify_ioc, parse_plain_iocs, _fetch_text
 
 
@@ -91,3 +94,176 @@ class TestFetchText:
     def test_bad_url_returns_empty(self):
         text = _fetch_text("file://nonexistent_file_12345.txt")
         assert text == ""
+
+
+# ── AbuseIPDB (mocked HTTP) ───────────────────────────────────────────────────
+
+class TestFetchAbuseIPDB:
+    """Tests for fetch_abuseipdb() — all HTTP calls are mocked."""
+
+    def test_returns_empty_without_api_key(self):
+        """If ABUSEIPDB_API_KEY is empty, return [] immediately without an HTTP call."""
+        with patch("src.fetch_feeds.ABUSEIPDB_API_KEY", ""):
+            from src.fetch_feeds import fetch_abuseipdb
+            result = fetch_abuseipdb()
+            assert result == []
+
+    def test_returns_correct_indicator_fields(self):
+        """Verify the returned dict has the expected keys and values."""
+        mock_data = {
+            "data": [{
+                "ipAddress": "1.2.3.4",
+                "abuseConfidenceScore": 95,
+                "countryCode": "US",
+                "isp": "Example ISP",
+                "totalReports": 10,
+                "lastReportedAt": "2026-05-25T10:00:00+00:00",
+                "categories": [18, 22],
+            }]
+        }
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = mock_data
+        mock_resp.raise_for_status = MagicMock()
+
+        with patch("src.fetch_feeds.ABUSEIPDB_API_KEY", "fake-key"), \
+             patch("requests.get", return_value=mock_resp):
+            from src.fetch_feeds import fetch_abuseipdb
+            result = fetch_abuseipdb(limit=1)
+
+        assert len(result) == 1
+        assert result[0]["indicator"] == "1.2.3.4"
+        assert result[0]["type"] == "ip"
+        assert result[0]["source"] == "AbuseIPDB"
+        assert result[0]["confidence"] == 95
+
+    def test_category_ids_mapped_to_tag_strings(self):
+        """Category IDs 18 and 22 should map to 'brute-force' and 'ssh-brute-force'."""
+        mock_data = {
+            "data": [{
+                "ipAddress": "5.5.5.5",
+                "abuseConfidenceScore": 90,
+                "countryCode": "DE",
+                "isp": "",
+                "totalReports": 5,
+                "lastReportedAt": "2026-05-25T10:00:00+00:00",
+                "categories": [18, 22],
+            }]
+        }
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = mock_data
+        mock_resp.raise_for_status = MagicMock()
+
+        with patch("src.fetch_feeds.ABUSEIPDB_API_KEY", "fake-key"), \
+             patch("requests.get", return_value=mock_resp):
+            from src.fetch_feeds import fetch_abuseipdb
+            result = fetch_abuseipdb()
+
+        assert "brute-force" in result[0]["tags"]
+        assert "ssh-brute-force" in result[0]["tags"]
+
+    def test_returns_empty_on_http_error(self):
+        """An HTTP error (e.g. 403 invalid key) should return [] gracefully."""
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.side_effect = requests.exceptions.HTTPError("403 Forbidden")
+        mock_resp.text = "Forbidden"
+
+        with patch("src.fetch_feeds.ABUSEIPDB_API_KEY", "bad-key"), \
+             patch("requests.get", return_value=mock_resp):
+            from src.fetch_feeds import fetch_abuseipdb
+            result = fetch_abuseipdb()
+
+        assert result == []
+
+
+# ── AlienVault OTX (mocked HTTP) ─────────────────────────────────────────────
+
+class TestFetchOTX:
+    """Tests for fetch_otx() — all HTTP calls are mocked."""
+
+    def test_returns_empty_without_api_key(self):
+        """If OTX_API_KEY is empty, return [] immediately without an HTTP call."""
+        with patch("src.fetch_feeds.OTX_API_KEY", ""):
+            from src.fetch_feeds import fetch_otx
+            result = fetch_otx()
+            assert result == []
+
+    def test_returns_all_supported_indicator_types(self):
+        """A pulse with IPv4, domain, URL, and SHA256 should produce 4 indicators."""
+        mock_data = {
+            "results": [{
+                "name": "TestPulse",
+                "tags": ["ransomware"],
+                "created": "2026-05-01T00:00:00Z",
+                "indicators": [
+                    {"type": "IPv4",            "indicator": "10.0.0.1",      "description": "C2"},
+                    {"type": "domain",          "indicator": "evil.com",       "description": ""},
+                    {"type": "URL",             "indicator": "http://evil.com/x", "description": ""},
+                    {"type": "FileHash-SHA256", "indicator": "a" * 64,         "description": ""},
+                ],
+            }],
+            "next": None,
+        }
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = mock_data
+        mock_resp.raise_for_status = MagicMock()
+
+        with patch("src.fetch_feeds.OTX_API_KEY", "fake-key"), \
+             patch("requests.get", return_value=mock_resp):
+            from src.fetch_feeds import fetch_otx
+            result = fetch_otx(max_pulses=1)
+
+        assert len(result) == 4
+        types = {r["type"] for r in result}
+        assert types == {"ip", "domain", "url", "hash"}
+
+    def test_source_is_alienvault(self):
+        """All returned indicators must have source='AlienVault'."""
+        mock_data = {
+            "results": [{"name": "P", "tags": [], "created": "2026-05-01T00:00:00Z",
+                         "indicators": [{"type": "IPv4", "indicator": "1.1.1.1", "description": ""}]}],
+            "next": None,
+        }
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = mock_data
+        mock_resp.raise_for_status = MagicMock()
+
+        with patch("src.fetch_feeds.OTX_API_KEY", "fake-key"), \
+             patch("requests.get", return_value=mock_resp):
+            from src.fetch_feeds import fetch_otx
+            result = fetch_otx()
+
+        assert all(r["source"] == "AlienVault" for r in result)
+
+    def test_skips_unsupported_types(self):
+        """Email and YARA indicator types should be silently skipped."""
+        mock_data = {
+            "results": [{"name": "P", "tags": [], "created": "2026-05-01T00:00:00Z",
+                         "indicators": [
+                             {"type": "email", "indicator": "evil@evil.com", "description": ""},
+                             {"type": "IPv4",  "indicator": "9.9.9.9",       "description": ""},
+                         ]}],
+            "next": None,
+        }
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = mock_data
+        mock_resp.raise_for_status = MagicMock()
+
+        with patch("src.fetch_feeds.OTX_API_KEY", "fake-key"), \
+             patch("requests.get", return_value=mock_resp):
+            from src.fetch_feeds import fetch_otx
+            result = fetch_otx()
+
+        assert len(result) == 1
+        assert result[0]["indicator"] == "9.9.9.9"
+
+    def test_returns_empty_on_http_error(self):
+        """An HTTP error (e.g. 401 bad key) should return [] gracefully."""
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.side_effect = requests.exceptions.HTTPError("401 Unauthorized")
+
+        with patch("src.fetch_feeds.OTX_API_KEY", "bad-key"), \
+             patch("requests.get", return_value=mock_resp):
+            from src.fetch_feeds import fetch_otx
+            result = fetch_otx()
+
+        assert result == []

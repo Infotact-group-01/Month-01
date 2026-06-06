@@ -18,6 +18,7 @@ Week 1 focuses on building the OSINT ingestion foundation, database schema, and 
   "observed_at": "2026-05-21T10:30:00Z",
   "confidence": 85,
   "tags": ["malware", "c2"],
+  "risk_score": 90,
   "first_seen": "2026-05-21T10:30:00Z",
   "last_seen": "2026-05-21T10:30:00Z"
 }
@@ -33,8 +34,9 @@ Week 1 focuses on building the OSINT ingestion foundation, database schema, and 
 | `observed_at` | DateTime | When the indicator was collected |
 | `confidence` | Integer | Confidence score (0-100), defaults to 85 |
 | `tags` | Array | Categorization tags (e.g., "malware", "phishing", "c2") |
-| `first_seen` | DateTime | First time indicator appeared in any feed |
-| `last_seen` | DateTime | Last time indicator was observed |
+| `risk_score` | Integer | Calculated danger level (0-100) based on confidence, source, and tags |
+| `first_seen` | DateTime | First time indicator appeared in any feed ($setOnInsert) |
+| `last_seen` | DateTime | Last time indicator was observed (updated on re-ingestion) |
 
 #### Indexes
 
@@ -175,29 +177,26 @@ python -c "from pymongo import MongoClient; client = MongoClient('mongodb://loca
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| `requests` | Latest | HTTP client for feed fetching |
-| `beautifulsoup4` | Latest | HTML parsing (future use) |
-| `pymongo` | Latest | MongoDB driver |
-| `python-dotenv` | Latest | Environment variable loading |
-| `pydantic` | Latest | Data validation |
-| `mongomock` | Latest | In-memory MongoDB fallback for testing |
+| `requests` | >=2.31.0 | HTTP client for feed fetching |
+| `pymongo` | >=4.6.0 | MongoDB driver |
+| `python-dotenv`| >=1.0.0 | Environment variable loading |
+| `pydantic` | >=2.0.0 | Data validation |
+| `mongomock` | >=4.1.0 | In-memory MongoDB fallback for testing |
+| `pytest` | >=7.4.0 | Automated testing framework |
 
 ---
 
 ## Testing Strategy
 
-### Unit Tests (Future)
-- Parser validation (IP/domain/URL classification)
-- Pydantic model enforcement
-- Error handling in fetch functions
-
-### Integration Tests (Future)
-- Full pipeline with real MongoDB
-- Deduplication with repeated ingestion
-- Multiple concurrent feeds
+### Unit Tests
+- `pytest tests/` runs the full suite
+- **Models**: Pydantic schema validation, default values, and risk calculation.
+- **Utils**: IPv4/IPv6 validation and IOC classification logic.
+- **Enforcer**: Dry-run tests and mock Windows Firewall calls ensuring bidirectional blocks.
+- **Rollback API**: Flask test client checking endpoints, Auth (`X-API-Key`), and `/api/stats`.
 
 ### Current Test Coverage
-- ✅ Test data with 104 indicators
+- ✅ 120+ tests implemented across all major components.
 - ✅ Local file:// feed support
 - ✅ Validation pipeline
 - ✅ Duplicate prevention logic
@@ -210,14 +209,11 @@ python -c "from pymongo import MongoClient; client = MongoClient('mongodb://loca
 1. Simple line-by-line parsing (no JSON/CSV parsing yet)
 2. No rate limiting for external feeds
 3. No feed authentication beyond basic URL structure
-4. Mongomock fallback for offline MongoDB (no persistence)
 
-### Week 2+ Enhancements
-1. Risk scoring schema and algorithm
-2. SIEM integration (ELK stack)
-3. Advanced feed parsers (JSON, CSV, XML)
-4. Feed authentication and API key support
-5. Rate limiting and retry logic
+### Future Enhancements
+1. Advanced feed parsers (JSON, CSV, XML)
+2. Feed authentication and API key support
+3. Rate limiting and retry logic
 
 ---
 

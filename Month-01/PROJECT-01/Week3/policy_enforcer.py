@@ -1,68 +1,35 @@
-#!/usr/bin/env python3
-"""
-policy_enforcer daemon
+"""Week 3 — Policy Enforcer Entry Point
+=======================================
+This module is the Week 3 deliverable entry point.
 
-Continuously monitors incoming policies and enforces them.
+The full Policy Enforcer implementation lives in ``src/enforcer.py``.
+This file provides a thin launcher so you can run the enforcer from the
+``Week3/`` directory during development, or reference it when reviewing
+the Week 3 codebase in isolation.
+
+Usage (from the project root):
+    python Week3/policy_enforcer.py [--dry-run] [--once] [--unblock-all]
+
+Or use the dedicated PowerShell launcher which handles venv activation
+and admin checking:
+    .\\run_enforcer.ps1 -DryRun
+    .\\run_enforcer.ps1 -Once
+    .\\run_enforcer.ps1
+
+See ``src/enforcer.py`` for the full implementation, and ``README.md``
+section "Run the Policy Enforcer (Week 3)" for complete usage instructions.
 """
 
-import time
-import logging
-import signal
 import sys
 from pathlib import Path
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
+# Ensure the project root is on the path so src.enforcer can be imported
+# regardless of which directory this script is run from.
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
-RUNNING = True
-
-
-def handle_sigterm(signum, frame):
-    """Handle termination signals to gracefully shut down the daemon."""
-    global RUNNING
-    logging.info("Received termination signal, shutting down...")
-    RUNNING = False
-
-
-def enforce_policy(policy):
-    """Placeholder for policy enforcement logic.
-
-    Args:
-        policy: An object or identifier representing a policy to enforce.
-    """
-    logging.info(f"Enforcing policy: {policy}")
-    # TODO: implement actual enforcement logic here
-
-
-def fetch_pending_policies():
-    """Placeholder to fetch pending policies.
-
-    Returns:
-        list: A list of policies pending enforcement.
-    """
-    # Example implementation could read JSON files from a directory:
-    # pending_dir = Path(__file__).parent / "pending_policies"
-    # return [p.read_text() for p in pending_dir.glob("*.json")]
-    return []
-
-
-def main():
-    # Register signal handlers for graceful shutdown
-    signal.signal(signal.SIGINT, handle_sigterm)
-    signal.signal(signal.SIGTERM, handle_sigterm)
-
-    logging.info("Policy Enforcer daemon started.")
-    while RUNNING:
-        policies = fetch_pending_policies()
-        for p in policies:
-            enforce_policy(p)
-        time.sleep(5)  # Poll interval (seconds)
-
-    logging.info("Policy Enforcer daemon stopped.")
+from src.enforcer import main  # noqa: E402
 
 if __name__ == "__main__":
     main()

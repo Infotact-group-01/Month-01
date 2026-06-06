@@ -184,12 +184,16 @@ def query_high_risk_ips(es, threshold: int = BLOCK_THRESHOLD) -> list[dict]:
 # ── Windows Firewall management ────────────────────────────────────────────────
 
 def rule_name(ip: str) -> str:
-    """Generate a unique firewall rule name for an IP."""
+    """Generate the base firewall rule name for an IP.
+
+    The inbound rule uses this name directly; the outbound rule appends ``-OUT``.
+    Both rules are created/removed together to provide bidirectional blocking.
+    """
     return f"{FIREWALL_PREFIX}{ip}"
 
 
 def firewall_rule_exists(ip: str) -> bool:
-    """Check if a TIP block rule already exists for this IP in Windows Firewall."""
+    """Check if the inbound TIP block rule exists for this IP in Windows Firewall."""
     name = rule_name(ip)
     try:
         result = subprocess.run(
@@ -201,28 +205,18 @@ def firewall_rule_exists(ip: str) -> bool:
         return False
 
 
-def add_firewall_block(ip: str, dry_run: bool = False) -> bool:
-    """Add an inbound block rule for the given IP in Windows Firewall.
+def _run_firewall_cmd(cmd: list, ip: str, dry_run: bool, description: str) -> bool:
+    """Execute a single netsh firewall command (or simulate in dry_run mode).
 
     Args:
-        ip: The IP address to block.
-        dry_run: If True, only logs the command — does not execute it.
+        cmd:         Full netsh command list.
+        ip:          The IP address being acted upon (for logging).
+        dry_run:     If True, log the command but do not execute it.
+        description: Short label for log messages (e.g. "add IN rule").
 
     Returns:
-        True if the rule was successfully added (or simulated in dry_run mode).
+        True on success (or dry_run), False on any failure.
     """
-    name = rule_name(ip)
-    cmd = [
-        "netsh", "advfirewall", "firewall", "add", "rule",
-        f"name={name}",
-        "protocol=any",
-        "dir=in",
-        "action=block",
-        f"remoteip={ip}",
-        "enable=yes",
-        f"description=Auto-blocked by TIP enforcer (risk >= {BLOCK_THRESHOLD})",
-    ]
-
     if dry_run:
         logger.info("[DRY-RUN] Would run: %s", " ".join(cmd))
         return True
@@ -231,58 +225,95 @@ def add_firewall_block(ip: str, dry_run: bool = False) -> bool:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
         if result.returncode == 0:
             return True
-        else:
-            logger.error("Firewall add failed for %s: %s", ip, result.stderr.strip())
-            return False
+        logger.error("Firewall %s failed for %s: %s",
+                     description, ip, result.stderr.strip())
+        return False
     except subprocess.TimeoutExpired:
-        logger.error("Firewall command timed out for IP: %s", ip)
+        logger.error("Firewall command timed out for IP %s (%s)", ip, description)
         return False
     except FileNotFoundError:
-        logger.error("'netsh' not found. Are you on Windows?")
+        logger.error("'netsh' not found — are you on Windows?")
         return False
     except Exception as exc:
-        logger.error("Unexpected error adding firewall rule for %s: %s", ip, exc)
+        logger.error("Unexpected error during firewall %s for %s: %s",
+                     description, ip, exc)
         return False
+
+
+def add_firewall_block(ip: str, dry_run: bool = False) -> bool:
+    """Add **inbound AND outbound** block rules for the given IP in Windows Firewall.
+
+    Two rules are created:
+    - ``TIP-BLOCK-<ip>``     — blocks inbound traffic FROM this IP.
+    - ``TIP-BLOCK-<ip>-OUT`` — blocks outbound traffic TO this IP
+      (prevents infected internal hosts reaching the C2 address).
+
+    Args:
+        ip:      The IP address to block.
+        dry_run: If True, only logs the commands — no real firewall changes.
+
+    Returns:
+        True if **both** rules were successfully applied (or simulated).
+    """
+    base = rule_name(ip)
+    description = f"Auto-blocked by TIP enforcer (risk >= {BLOCK_THRESHOLD})"
+
+    all_ok = True
+    for direction, name in [("in", base), ("out", f"{base}-OUT")]:
+        cmd = [
+            "netsh", "advfirewall", "firewall", "add", "rule",
+            f"name={name}",
+            "protocol=any",
+            f"dir={direction}",
+            "action=block",
+            f"remoteip={ip}",
+            "enable=yes",
+            f"description={description}",
+        ]
+        if not _run_firewall_cmd(cmd, ip, dry_run, f"add {direction} rule"):
+            all_ok = False
+
+    return all_ok
 
 
 def remove_firewall_block(ip: str, dry_run: bool = False) -> bool:
-    """Remove the TIP block rule for the given IP from Windows Firewall.
+    """Remove both inbound and outbound TIP block rules for the given IP.
+
+    Removes ``TIP-BLOCK-<ip>`` and ``TIP-BLOCK-<ip>-OUT``.  If the -OUT rule
+    does not exist (e.g. legacy blocks created before this feature), the
+    operation still returns True as long as the primary inbound rule was removed.
 
     Args:
-        ip: The IP address to unblock.
-        dry_run: If True, only logs — does not execute.
+        ip:      The IP address to unblock.
+        dry_run: If True, only logs — no real firewall changes.
 
     Returns:
-        True if the rule was removed (or simulated).
+        True if the primary inbound rule was successfully removed (or simulated).
     """
-    name = rule_name(ip)
-    cmd = [
+    base = rule_name(ip)
+
+    # Primary inbound rule — failure here is a real error
+    cmd_in = [
         "netsh", "advfirewall", "firewall", "delete", "rule",
-        f"name={name}",
+        f"name={base}",
     ]
+    primary_ok = _run_firewall_cmd(cmd_in, ip, dry_run, "remove IN rule")
 
-    if dry_run:
-        logger.info("[DRY-RUN] Would run: %s", " ".join(cmd))
-        return True
+    # Outbound rule — best-effort; may not exist for legacy blocks
+    cmd_out = [
+        "netsh", "advfirewall", "firewall", "delete", "rule",
+        f"name={base}-OUT",
+    ]
+    _run_firewall_cmd(cmd_out, ip, dry_run, "remove OUT rule")
 
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
-        # netsh returns 0 on success
-        if result.returncode == 0:
-            return True
-        else:
-            logger.warning("Firewall remove returned non-zero for %s: %s",
-                           ip, result.stderr.strip())
-            return False
-    except Exception as exc:
-        logger.error("Unexpected error removing firewall rule for %s: %s", ip, exc)
-        return False
+    return primary_ok
 
 
-def unblock_all_tip_rules(dry_run: bool = False) -> int:
+def unblock_all_tip_rules(dry_run: bool = False) -> bool:
     """Remove ALL Windows Firewall rules created by TIP (name starts with TIP-BLOCK-).
 
-    Returns the number of rules removed.
+    Returns:
+        True if the command succeeded (or dry_run), False on failure.
     """
     cmd = [
         "netsh", "advfirewall", "firewall", "delete", "rule",
@@ -291,21 +322,19 @@ def unblock_all_tip_rules(dry_run: bool = False) -> int:
 
     if dry_run:
         logger.info("[DRY-RUN] Would remove all TIP-BLOCK-* firewall rules.")
-        return 0
+        return True
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         if result.returncode == 0:
-            # Count lines that match "1 rule(s) deleted" pattern
-            lines = [l for l in result.stdout.splitlines() if "rule" in l.lower() and "deleted" in l.lower()]
             logger.info("Removed all TIP firewall rules. Output: %s", result.stdout.strip())
-            return len(lines)
+            return True
         else:
             logger.warning("Unblock-all returned non-zero: %s", result.stderr.strip())
-            return 0
+            return False
     except Exception as exc:
         logger.error("Error during unblock-all: %s", exc)
-        return 0
+        return False
 
 
 # ── Admin check ────────────────────────────────────────────────────────────────
@@ -427,10 +456,15 @@ def main() -> None:
     # ── Unblock-all mode
     if args.unblock_all:
         state = load_state()
-        count = unblock_all_tip_rules(dry_run=args.dry_run)
-        state["blocked"] = {}
-        save_state(state)
-        logger.info("Cleared all TIP firewall rules. State reset.")
+        # Count from state (reliable) rather than parsing netsh output text
+        rule_count = len(state.get("blocked", {}))
+        success = unblock_all_tip_rules(dry_run=args.dry_run)
+        if success or args.dry_run:
+            state["blocked"] = {}
+            save_state(state)
+            logger.info("Cleared %d TIP firewall rules. State reset.", rule_count)
+        else:
+            logger.error("unblock-all firewall command failed — state NOT cleared.")
         return
 
     # ── Connect to Elasticsearch

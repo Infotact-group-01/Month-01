@@ -58,3 +58,31 @@ FEED_URLS = get_feed_urls()
 def get_db_collection():
     """Return the MongoDB collection for indicators."""
     return indicators
+
+
+def validate_config() -> list[str]:
+    """Check for missing optional configuration and return a list of warning strings.
+
+    Call this at application startup to surface configuration gaps to the user.
+    Returns an empty list if all optional keys are present.
+
+    Returns:
+        List of human-readable warning strings (empty = fully configured).
+    """
+    warnings: list[str] = []
+    if not os.getenv("ABUSEIPDB_API_KEY"):
+        warnings.append(
+            "ABUSEIPDB_API_KEY not set — AbuseIPDB live feed will be skipped. "
+            "Get a free key at https://www.abuseipdb.com/register"
+        )
+    if not os.getenv("OTX_API_KEY"):
+        warnings.append(
+            "OTX_API_KEY not set — AlienVault OTX feed will be skipped. "
+            "Get a free key at https://otx.alienvault.com"
+        )
+    if not os.getenv("ELASTIC_PASSWORD"):
+        warnings.append(
+            "ELASTIC_PASSWORD not set — Elasticsearch authentication may fail. "
+            "Set ELASTIC_PASSWORD in your .env file."
+        )
+    return warnings

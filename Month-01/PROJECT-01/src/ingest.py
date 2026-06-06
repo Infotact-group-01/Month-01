@@ -1,19 +1,30 @@
-"""Ingestion Orchestrator for TIP Project.
-Fetches data from OSINT feeds, validates them, and inserts them into MongoDB.
-"""
-
 import logging
 import datetime
 from .fetch_feeds import fetch_all_feeds
 from .models import Indicator
 from .db import setup_database, insert_indicators
 from .es_client import setup_elasticsearch, index_indicators
+from .config import validate_config
 
 logger = logging.getLogger(__name__)
 
-def process_feeds():
-    """Main workflow to fetch, validate, and store OSINT indicators."""
+def process_feeds() -> dict:
+    """Main workflow to fetch, validate, and store OSINT indicators.
+
+    Returns:
+        A summary dict with keys:
+          - ``fetched``   (int): Raw indicators pulled from all feeds.
+          - ``validated`` (int): Indicators that passed Pydantic validation.
+          - ``inserted``  (int): New records inserted into MongoDB.
+          - ``indexed``   (int): Records synced to Elasticsearch.
+    """
     logger.info("Starting TIP ingestion process...")
+
+    # Surface any missing API key configuration early
+    for warning in validate_config():
+        logger.warning("CONFIG: %s", warning)
+
+    summary = {"fetched": 0, "validated": 0, "inserted": 0, "indexed": 0}
 
     # 1. Ensure DB and ES are set up with indices
     setup_database()
@@ -21,11 +32,12 @@ def process_feeds():
 
     # 2. Fetch raw data from feeds
     raw_indicators = fetch_all_feeds()
+    summary["fetched"] = len(raw_indicators)
     if not raw_indicators:
         logger.warning("No indicators fetched. Exiting.")
-        return
+        return summary
 
-    # 3. Validate and normalize data using Pydantic Models
+    # 3. Validate and normalize data using Pydantic models
     valid_indicators = []
     now = datetime.datetime.now(datetime.timezone.utc)
 
@@ -35,7 +47,6 @@ def process_feeds():
             raw["observed_at"] = now
 
         try:
-            # Validate indicator and calculate risk
             indicator_model = Indicator(**raw)
             indicator_model.calculate_risk()
             if hasattr(indicator_model, "model_dump"):
@@ -44,20 +55,28 @@ def process_feeds():
                 import dataclasses
                 valid_indicators.append(dataclasses.asdict(indicator_model))
         except Exception as e:
-            # Depending on how strict we want to be, we could log every validation error
-            # For now, we skip bad indicators silently or with debug
-            logger.debug(f"Validation failed for {raw.get('indicator')}: {e}")
+            logger.debug("Validation failed for %s: %s", raw.get("indicator"), e)
 
-    logger.info(f"Successfully validated {len(valid_indicators)} out of {len(raw_indicators)} indicators.")
+    summary["validated"] = len(valid_indicators)
+    logger.info(
+        "Successfully validated %d out of %d indicators.",
+        len(valid_indicators), len(raw_indicators),
+    )
 
     # 4. Insert into database and Elasticsearch
     if valid_indicators:
         inserted = insert_indicators(valid_indicators)
-        logger.info(f"Ingestion complete. Inserted {inserted} new indicators into the database.")
+        summary["inserted"] = inserted
+        logger.info("Ingestion complete. Inserted %d new indicators into the database.", inserted)
+
         es_inserted = index_indicators(valid_indicators)
-        logger.info(f"Elasticsearch sync complete. Indexed {es_inserted} indicators.")
+        summary["indexed"] = es_inserted
+        logger.info("Elasticsearch sync complete. Indexed %d indicators.", es_inserted)
     else:
         logger.warning("No valid indicators to insert.")
+
+    return summary
+
 
 if __name__ == "__main__":
     process_feeds()

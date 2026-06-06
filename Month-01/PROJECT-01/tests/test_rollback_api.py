@@ -248,3 +248,49 @@ class TestAudit:
                     json={"reason": "audit test", "analyst": "x"})
         data = client.get("/api/audit").get_json()
         assert data["count"] >= 1
+
+
+# ── GET /api/stats ─────────────────────────────────────────────────────────────
+
+class TestStats:
+    def test_returns_200(self, client, state_empty):
+        resp = client.get("/api/stats")
+        assert resp.status_code == 200
+
+    def test_empty_stats(self, client, state_empty):
+        data = client.get("/api/stats").get_json()
+        assert data["total_blocked"] == 0
+        assert data["by_source"] == {}
+        assert data["by_risk_tier"]["critical"] == 0
+
+    def test_populated_stats(self, client, state_with_blocked):
+        data = client.get("/api/stats").get_json()
+        assert data["total_blocked"] == 2
+        assert data["by_source"]["AbuseIPDB"] == 1
+        assert data["by_source"]["EmergingThreats_IPs"] == 1
+        assert data["by_risk_tier"]["critical"] == 2
+        assert data["by_risk_tier"]["high"] == 0
+
+
+# ── API Key Auth ───────────────────────────────────────────────────────────────
+
+class TestAPIKeyAuth:
+    def test_no_key_configured_allows_all(self, client, monkeypatch):
+        monkeypatch.setattr("src.rollback_api.ROLLBACK_API_KEY", "")
+        resp = client.get("/api/blocked")
+        assert resp.status_code == 200
+
+    def test_missing_header_returns_401(self, client, monkeypatch):
+        monkeypatch.setattr("src.rollback_api.ROLLBACK_API_KEY", "secret")
+        resp = client.get("/api/blocked")
+        assert resp.status_code == 401
+
+    def test_invalid_header_returns_403(self, client, monkeypatch):
+        monkeypatch.setattr("src.rollback_api.ROLLBACK_API_KEY", "secret")
+        resp = client.get("/api/blocked", headers={"X-API-Key": "wrong"})
+        assert resp.status_code == 403
+
+    def test_valid_header_returns_200(self, client, monkeypatch, state_with_blocked):
+        monkeypatch.setattr("src.rollback_api.ROLLBACK_API_KEY", "secret")
+        resp = client.get("/api/blocked", headers={"X-API-Key": "secret"})
+        assert resp.status_code == 200

@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 import requests
 from dotenv import load_dotenv
 from .config import FEED_URLS
+from .utils import classify_ioc
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -70,32 +71,11 @@ ABUSEIPDB_CATEGORIES = {
     23: "iot-targeted",
 }
 
-# ── IOC classification patterns ──────────────────────────────────────────────
-_IP_RE = re.compile(
-    r"^(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)$"
-)
-_HASH_RE = re.compile(r"^[a-fA-F0-9]{32,128}$")
-
-
-def _classify_ioc(value: str) -> str:
-    """Classify an IOC string as ip, domain, url, or hash.
-
-    Order of checks:
-      1. URL  – starts with http:// or https://
-      2. IP   – matches dotted-decimal IPv4
-      3. Hash – 32-128 hex characters (MD5 / SHA-1 / SHA-256 / SHA-512)
-      4. Domain – contains a dot
-      5. Fallback – treat as ip (e.g. bare hostnames)
-    """
-    if value.startswith(("http://", "https://")):
-        return "url"
-    if _IP_RE.match(value):
-        return "ip"
-    if _HASH_RE.match(value):
-        return "hash"
-    if "." in value:
-        return "domain"
-    return "ip"
+# ── IOC classification ───────────────────────────────────────────────────────
+# Delegate to the shared utility so the logic lives in exactly one place.
+# The private alias keeps backward compatibility with existing tests that
+# import `_classify_ioc` directly from this module.
+_classify_ioc = classify_ioc
 
 
 def _fetch_text(url: str) -> str:

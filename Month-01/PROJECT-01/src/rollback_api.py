@@ -26,7 +26,6 @@ import argparse
 import json
 import logging
 import os
-import re
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,12 +33,16 @@ from pathlib import Path
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from .utils import is_valid_any_ip
 
 load_dotenv()
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 API_HOST    = os.getenv("ROLLBACK_API_HOST", "127.0.0.1")
 API_PORT    = int(os.getenv("ROLLBACK_API_PORT", "5050"))
+# If set, all /api/* endpoints require the header:  X-API-Key: <ROLLBACK_API_KEY>
+# Leave empty / unset to run without authentication.
+ROLLBACK_API_KEY = os.getenv("ROLLBACK_API_KEY", "")
 
 _PROJECT_ROOT   = Path(__file__).resolve().parents[1]
 STATE_FILE      = _PROJECT_ROOT / "enforcer_state.json"
@@ -61,6 +64,31 @@ CORS(app)  # Allow browser requests from Kibana or any local frontend
 
 # Global dry-run flag (set at startup)
 _DRY_RUN: bool = False
+
+
+# ── Authentication ──────────────────────────────────────────────────────────────────
+
+def _require_api_key():
+    """Return a JSON error response if API key auth is configured and fails.
+
+    If ``ROLLBACK_API_KEY`` is set in the environment, every protected endpoint
+    requires the caller to send the header::
+
+        X-API-Key: <your_key>
+
+    Returns:
+        ``None`` if the request is authorised (or no key is configured).
+        A ``(response, status_code)`` tuple to return immediately on failure.
+    """
+    if not ROLLBACK_API_KEY:
+        return None  # Auth not configured — allow all requests
+    provided = request.headers.get("X-API-Key", "")
+    if not provided:
+        return jsonify({"error": "Missing X-API-Key header",
+                        "hint": "Set ROLLBACK_API_KEY in .env and pass X-API-Key header."}), 401
+    if provided != ROLLBACK_API_KEY:
+        return jsonify({"error": "Invalid API key"}), 403
+    return None
 
 
 # ── State helpers ──────────────────────────────────────────────────────────────
@@ -96,28 +124,45 @@ def _append_rollback_log(ip: str, reason: str, analyst: str, dry_run: bool) -> N
         f.write(json.dumps(entry) + "\n")
 
 
-# ── Firewall helpers ───────────────────────────────────────────────────────────
+# ── Firewall helpers ────────────────────────────────────────────────────────────────────────────
 
 def _remove_firewall_rule(ip: str) -> bool:
-    """Remove a TIP firewall block rule for the given IP."""
-    name = f"{FIREWALL_PREFIX}{ip}"
-    cmd = ["netsh", "advfirewall", "firewall", "delete", "rule", f"name={name}"]
+    """Remove both inbound and outbound TIP firewall block rules for the given IP.
+
+    The primary inbound rule (``TIP-BLOCK-<ip>``) must succeed for this
+    function to return True.  The outbound rule (``TIP-BLOCK-<ip>-OUT``) is
+    removed as a best-effort — if it doesn't exist (legacy block), we don't fail.
+    """
+    base_name = f"{FIREWALL_PREFIX}{ip}"
+
+    # Primary inbound rule — must succeed
+    cmd_in = ["netsh", "advfirewall", "firewall", "delete", "rule", f"name={base_name}"]
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
-        return result.returncode == 0
+        result = subprocess.run(cmd_in, capture_output=True, text=True, timeout=15)
+        if result.returncode != 0:
+            logger.error("Error removing inbound firewall rule for %s: %s",
+                         ip, result.stderr.strip())
+            return False
     except Exception as exc:
         logger.error("Error removing firewall rule for %s: %s", ip, exc)
         return False
 
+    # Outbound rule — best-effort (may not exist for older blocks)
+    cmd_out = ["netsh", "advfirewall", "firewall", "delete", "rule",
+               f"name={base_name}-OUT"]
+    try:
+        subprocess.run(cmd_out, capture_output=True, text=True, timeout=15)
+    except Exception:
+        pass  # Best-effort; failure here is non-fatal
 
-# ── Validators ────────────────────────────────────────────────────────────────
+    return True
 
-_IP_RE = re.compile(
-    r"^(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)$"
-)
 
-def _valid_ip(ip: str) -> bool:
-    return bool(_IP_RE.match(ip))
+# ── Validators ──────────────────────────────────────────────────────────────────────────
+# Delegates to the shared utility in src/utils.py — no duplicate regex.
+# is_valid_any_ip accepts both IPv4 and IPv6 so SOC analysts can roll back
+# IPv6 threat indicators as well.
+_valid_ip = is_valid_any_ip
 
 
 # ── API Routes ─────────────────────────────────────────────────────────────────
@@ -146,6 +191,10 @@ def get_blocked():
         sort_by: field to sort by (risk_score, blocked_at, source) — default: risk_score
         order:   asc or desc — default: desc
     """
+    auth_error = _require_api_key()
+    if auth_error:
+        return auth_error
+
     state = _load_state()
     blocked = state.get("blocked", {})
 
@@ -178,6 +227,10 @@ def get_blocked():
 @app.route("/api/blocked/<ip>", methods=["GET"])
 def get_blocked_ip(ip: str):
     """Return metadata for a single blocked IP."""
+    auth_error = _require_api_key()
+    if auth_error:
+        return auth_error
+
     if not _valid_ip(ip):
         return jsonify({"error": "Invalid IP address format"}), 400
 
@@ -208,6 +261,10 @@ def rollback_ip(ip: str):
           "analyst": "john.doe"
         }
     """
+    auth_error = _require_api_key()
+    if auth_error:
+        return auth_error
+
     if not _valid_ip(ip):
         return jsonify({"error": "Invalid IP address format"}), 400
 
@@ -272,6 +329,10 @@ def rollback_all():
           "analyst":  "..."
         }
     """
+    auth_error = _require_api_key()
+    if auth_error:
+        return auth_error
+
     body = request.get_json(silent=True) or {}
 
     if not body.get("confirm"):
@@ -289,7 +350,12 @@ def rollback_all():
     if not _DRY_RUN:
         cmd = ["netsh", "advfirewall", "firewall", "delete", "rule", f"name={FIREWALL_PREFIX}*"]
         try:
-            subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            if result.returncode != 0:
+                # Firewall command failed — do NOT clear state so it stays consistent
+                err = result.stderr.strip() or result.stdout.strip()
+                logger.error("Firewall rollback-all failed: %s", err)
+                return jsonify({"error": "Firewall command failed", "detail": err}), 500
         except Exception as exc:
             logger.error("Error during rollback-all: %s", exc)
             return jsonify({"error": "Firewall command failed", "detail": str(exc)}), 500
@@ -322,6 +388,10 @@ def get_audit():
         limit: max number of entries to return (default: 200)
         action: filter by action type (BLOCKED, ROLLBACK)
     """
+    auth_error = _require_api_key()
+    if auth_error:
+        return auth_error
+
     limit  = int(request.args.get("limit", 200))
     action = request.args.get("action", "").upper()
 
@@ -373,6 +443,54 @@ def get_audit():
     })
 
 
+@app.route("/api/stats", methods=["GET"])
+def get_stats():
+    """Return aggregate statistics about currently blocked IPs.
+
+    Response:
+        {
+          "total_blocked": 12,
+          "by_source": {"AbuseIPDB": 8, "EmergingThreats_IPs": 4},
+          "by_risk_tier": {"critical": 10, "high": 2, "medium": 0, "low": 0},
+          "dry_run": false,
+          "timestamp": "..."
+        }
+    """
+    auth_error = _require_api_key()
+    if auth_error:
+        return auth_error
+
+    state = _load_state()
+    blocked = state.get("blocked", {})
+
+    by_source: dict = {}
+    by_risk_tier = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+
+    for _ip, meta in blocked.items():
+        # Count by source
+        source = meta.get("source", "unknown")
+        by_source[source] = by_source.get(source, 0) + 1
+
+        # Classify by risk tier
+        score = meta.get("risk_score", 0) or 0
+        if score >= 90:
+            by_risk_tier["critical"] += 1
+        elif score >= 75:
+            by_risk_tier["high"] += 1
+        elif score >= 50:
+            by_risk_tier["medium"] += 1
+        else:
+            by_risk_tier["low"] += 1
+
+    return jsonify({
+        "total_blocked": len(blocked),
+        "by_source":     by_source,
+        "by_risk_tier":  by_risk_tier,
+        "dry_run":       _DRY_RUN,
+        "timestamp":     datetime.now(timezone.utc).isoformat(),
+    })
+
+
 # ── Main entry ─────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -392,17 +510,21 @@ def main() -> None:
     _DRY_RUN = args.dry_run
 
     dry_label = " [DRY-RUN MODE]" if _DRY_RUN else ""
+    auth_mode = "ENABLED (X-API-Key required)" if ROLLBACK_API_KEY else "DISABLED (Open to localhost)"
+    
     print()
     print("=" * 65)
     print("  TIP Rollback API — Week 4")
     print(f"  Listening : http://{args.host}:{args.port}")
     print(f"  State     : {STATE_FILE}")
     print(f"  Mode      : {'DRY-RUN — no real firewall changes' if _DRY_RUN else 'LIVE'}")
+    print(f"  Auth      : {auth_mode}")
     print()
     print("  Endpoints:")
     print("    GET  /health")
     print("    GET  /api/blocked")
     print("    GET  /api/blocked/<ip>")
+    print("    GET  /api/stats")
     print("    POST /api/rollback/<ip>")
     print("    POST /api/rollback-all")
     print("    GET  /api/audit")

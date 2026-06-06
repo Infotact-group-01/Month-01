@@ -94,7 +94,7 @@ def ensure_index(es):
     try:
         es.indices.get(index=INDEX_NAME)
     except Exception:
-        es.indices.create(index=INDEX_NAME, body=INDEX_MAPPINGS)
+        es.indices.create(index=INDEX_NAME, mappings=INDEX_MAPPINGS["mappings"])
         logger.info("Created index '%s' with full demo mappings.", INDEX_NAME)
 
 

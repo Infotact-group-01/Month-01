@@ -136,8 +136,8 @@ class TestFirewallOperations:
             mock_run.return_value = MagicMock(returncode=0, stderr="")
             result = add_firewall_block("192.168.1.1", dry_run=False)
             assert result is True
-            mock_run.assert_called_once()
-            cmd = mock_run.call_args[0][0]
+            assert mock_run.call_count == 2
+            cmd = mock_run.call_args_list[0][0][0]
             assert "netsh" in cmd
             assert "TIP-BLOCK-192.168.1.1" in " ".join(cmd)
 
@@ -146,8 +146,8 @@ class TestFirewallOperations:
             mock_run.return_value = MagicMock(returncode=0, stderr="")
             result = remove_firewall_block("192.168.1.1", dry_run=False)
             assert result is True
-            mock_run.assert_called_once()
-            cmd = mock_run.call_args[0][0]
+            assert mock_run.call_count == 2
+            cmd = mock_run.call_args_list[0][0][0]
             assert "delete" in cmd
 
     def test_add_block_returns_false_on_nonzero(self):
@@ -158,7 +158,7 @@ class TestFirewallOperations:
 
     def test_unblock_all_dry_run(self):
         result = unblock_all_tip_rules(dry_run=True)
-        assert result == 0
+        assert result is True  # dry_run returns True (success), not 0
 
     def test_unblock_all_calls_netsh_wildcard(self):
         with patch("subprocess.run") as mock_run:
