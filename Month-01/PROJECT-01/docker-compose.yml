@@ -25,7 +25,7 @@ services:
     hostname: elasticsearch
     environment:
       - discovery.type=single-node
-      - xpack.security.enabled=true
+      - xpack.security.enabled=false   # Disabled for local development
       - xpack.security.http.ssl.enabled=false   # Keep HTTP (not HTTPS) for simplicity
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"

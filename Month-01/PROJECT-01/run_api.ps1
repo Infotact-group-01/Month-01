@@ -24,7 +24,7 @@
 param(
     [switch]$DryRun,
     [int]$Port = 5050,
-    [string]$Host = "127.0.0.1"
+    [string]$BindHost = "127.0.0.1"
 )
 
 $ErrorActionPreference = "Stop"
@@ -52,7 +52,7 @@ function Activate-Venv {
 # ── Banner ────────────────────────────────────────────────────────────────────
 Write-Header "TIP Rollback API — Week 4"
 
-Write-Host "  URL  : http://${Host}:${Port}" -ForegroundColor Cyan
+Write-Host "  URL  : http://${BindHost}:${Port}" -ForegroundColor Cyan
 if ($DryRun) {
     Write-Host "  Mode : DRY-RUN — rollbacks are simulated, no firewall changes" -ForegroundColor Yellow
 } else {
@@ -70,7 +70,7 @@ Activate-Venv
 Set-Location $ProjectRoot
 
 # ── Build arguments ───────────────────────────────────────────────────────────
-$args_list = @("--host", $Host, "--port", $Port)
+$args_list = @("--host", $BindHost, "--port", $Port)
 if ($DryRun) { $args_list += "--dry-run" }
 
 # ── Run ───────────────────────────────────────────────────────────────────────
