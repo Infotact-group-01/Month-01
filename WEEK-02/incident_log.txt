@@ -1,0 +1,2 @@
+=== HISTORICAL INCIDENT LOG ===
+[CRITICAL] Malicious C2 Detected: 50.16.16.211:443 | Malware: QakBot

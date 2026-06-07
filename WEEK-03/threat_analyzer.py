@@ -1,9 +1,9 @@
 # Simple analyzer to count incidents
 def analyze_logs():
-    with open('../WEEK-02/incident_log.txt', 'r') as file:
+    with open('WEEK-02/incident_log.txt', 'r') as file:
         logs = file.readlines()
         
-    threats = [line for line in logs if "suspicious" in line.lower()]
+    threats = [line for line in logs if "critical" in line.lower()]
     print(f"Total threats detected: {len(threats)}")
     
     with open('analysis_results.txt', 'w') as out:
