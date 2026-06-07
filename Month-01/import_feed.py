@@ -1,7 +1,7 @@
 import csv
 from pymongo import MongoClient
 
-client = MongoClient("mongo://localhost:27017")
+client = MongoClient("mongodb://pensive_turing:27017")
 
 db = client["threat_intelligence"]
 collection = db["threats"]
