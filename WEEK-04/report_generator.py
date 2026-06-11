@@ -5,7 +5,8 @@ def generate_report():
             data = file.read()
     except FileNotFoundError:
         data = "No analysis data found."
-        
+
+    
     # Generate the final report file
     with open('final_security_report.txt', 'w') as report:
         report.write("--- FINAL SECURITY INCIDENT REPORT ---\n")
@@ -13,6 +14,7 @@ def generate_report():
         report.write(f"Summary of findings: {data}\n")
         report.write("---------------------------------------\n")
         print("Final report generated: final_security_report.txt")
+
 
 if __name__ == "__main__":
     generate_report()
