@@ -2,6 +2,13 @@
 
 A Threat Intelligence Platform coupled with a Dynamic Security Policy Enforcer designed for financial institutions. It aggregates open-source threat feeds, normalizes data in MongoDB, feeds a SIEM, and automatically updates firewall rules in real time.
 
+# Project Source Code
+
+You can access the project implementation by clicking here: **[PROJECT-01](./PROJECT-01/)**
+
+
+
+
 ## Week-1 Learning Summaries
 
 - **Day 1 – Introduction to Cybersecurity** – Overview of core cybersecurity concepts and the CIA triad. [Day 1 summary](LEARNING_SESSION/WEEK-01/DAY-01/Day1_Intro_Cybersecurity_Summary.md)
@@ -18,6 +25,7 @@ A Threat Intelligence Platform coupled with a Dynamic Security Policy Enforcer d
 - **Day 5 – Threat Severity Scoring & Critical Alert Filtering** – Filtering online threats, severity scoring engine (malware family, port analysis), and high-severity logs. [Day 5 summary](LEARNING_SESSION/WEEK-2/DAY-5.md)
 - **Day 6 – Interactive Threat Intelligence Search Console** – Command-line search console to search active threats by malware family or country code. [Day 6 summary](LEARNING_SESSION/WEEK-2/DAY-6.md)
 
+
 ---
 
-> *Last updated: 2026-06-05*
+> *Last updated: 2026-06-18*
