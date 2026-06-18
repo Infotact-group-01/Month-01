@@ -41,7 +41,7 @@ PROJECT-01/
 ├── feeds.json               ← List of free text-based threat feed URLs
 ├── requirements.txt         ← All Python packages needed
 ├── Makefile                 ← Convenience targets for Linux/CI
-├── docker-compose.yml       ← Starts Elasticsearch + Kibana with one command
+├── docker-compose.yml       ← Starts Elasticsearch + Logstash + Kibana + MongoDB
 ├── load_demo_data.py        ← Loads realistic demo data into Elasticsearch
 │
 ├── src/                     ← All Python source code
@@ -52,7 +52,19 @@ PROJECT-01/
 │   ├── es_client.py         ← Pushes data into Elasticsearch
 │   ├── ingest.py            ← MASTER script — runs the full pipeline
 │   ├── enforcer.py          ← Week 3: Policy Enforcer Daemon (auto-blocking)
-│   └── rollback_api.py      ← Week 4: Flask REST API for SOC rollback control
+│   ├── rollback_api.py      ← Week 4: Flask REST API for SOC rollback control
+│   ├── cli.py               ← CLI interface for the platform
+│   └── utils.py             ← Shared utilities (IP validation, IOC classification)
+│
+├── logstash/                ← Logstash configuration for log shipping to ES
+│   ├── logstash.yml         ← Logstash server settings (HTTP host, workers)
+│   └── pipeline/
+│       └── logstash.conf    ← Pipeline: parses enforcer/rollback/ingestion logs → ES
+│
+├── logs/                    ← Audit logs from all TIP components
+│   ├── enforcer.log         ← Enforcer daemon audit trail (block actions)
+│   ├── rollback.log         ← Rollback API audit trail (analyst unblock actions)
+│   └── ingestion.log        ← Pipeline run log (feed fetching, DB insert, ES sync)
 │
 ├── data/
 │   └── demo_dataset.json    ← 54 hand-crafted realistic demo indicators
@@ -60,9 +72,7 @@ PROJECT-01/
 ├── kibana/
 │   └── dashboard_export.ndjson  ← Pre-built Kibana dashboard (import once)
 │
-├── logs/                    ← Auto-created: enforcer.log + rollback.log
-│
-├── tests/                   ← Automated test suite (96 tests)
+├── tests/                   ← Automated test suite (161 tests)
 │
 ├── SCHEMA.md                ← Full database schema documentation
 ├── PROJECT_GUIDE.md         ← Complete client-facing explanation of the project
@@ -242,7 +252,7 @@ Elasticsearch sync: 13312 indexed, 0 failed.
 
 Open your browser and go to:
 
-**👉 http://localhost:5601**
+**👉 http://localhost:5501**
 
 **First-time setup (do this once):**
 1. Click the **☰ menu** (top-left)
@@ -338,7 +348,7 @@ curl http://localhost:5050/api/audit
 ---
 
 ### Import the pre-built Kibana Dashboard (Week 4)
-1. Open **http://localhost:5601** → log in
+1. Open **http://localhost:5501** → log in
 2. Go to **☰ menu → Stack Management → Saved Objects**
 3. Click **Import** → select `kibana/dashboard_export.ndjson`
 4. Go to **☰ menu → Dashboard** → open **"TIP — Threat Intelligence Dashboard"**
@@ -483,11 +493,11 @@ pip install -r requirements.txt --upgrade
 | Risk calculation implemented | `calculate_risk()` — confidence + tags + source weight |
 | Live API feeds added | AbuseIPDB (500 IPs/run) + AlienVault OTX (796+ IOCs/run) |
 | Elasticsearch set up | Docker container running on port 9200, v8.16.0 |
-| Kibana SIEM running | Visual dashboard on port 5601 |
+| Kibana SIEM running | Visual dashboard on port 5501 |
 | Dual-write pipeline | Every indicator → MongoDB **and** Elasticsearch |
 | ES sync result | **13,312 indexed, 0 failed** ✅ |
 | Demo dataset created | 54 indicators across 6 real attack campaigns |
-| Automated tests passing | **42 tests, all passing** ✅ |
+| Automated tests passing | **161 tests, all passing** ✅ |
 
 ---
 

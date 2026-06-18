@@ -13,7 +13,7 @@ help:
 	@echo "  TIP — Threat Intelligence Platform"
 	@echo "  ─────────────────────────────────────────────────────────"
 	@echo "  make run          Run the full ingestion pipeline"
-	@echo "  make test         Run the automated test suite (100+ tests)"
+	@echo "  make test         Run the automated test suite (161 tests)"
 	@echo "  make demo         Load the demo dataset into Elasticsearch"
 	@echo "  make enforcer     Start the Policy Enforcer daemon (dry-run)"
 	@echo "  make api          Start the Rollback API on port 5050 (dry-run)"

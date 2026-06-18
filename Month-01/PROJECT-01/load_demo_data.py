@@ -168,7 +168,7 @@ def main():
         print(f"  ✅  Successfully indexed {success} demo indicators!")
         print()
         print("  Next steps:")
-        print("  1. Open Kibana → http://localhost:5601")
+        print("  1. Open Kibana → http://localhost:5501")
         print("  2. Go to Stack Management → Index Patterns")
         print("  3. Create index pattern:  indicators  (time field: observed_at)")
         print("  4. Go to Discover → explore your data!")

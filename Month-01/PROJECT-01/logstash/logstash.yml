@@ -1,0 +1,32 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Logstash Settings — TIP (Threat Intelligence Platform)
+# ─────────────────────────────────────────────────────────────────────────────
+# This file configures the Logstash instance that ships enforcer and rollback
+# audit logs into Elasticsearch for centralized monitoring and alerting.
+#
+# Mounted into the container at:
+#   /usr/share/logstash/config/logstash.yml
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Network ───────────────────────────────────────────────────────────────────
+# Bind to all interfaces so the container is reachable from the Docker network.
+http.host: "0.0.0.0"
+
+# ── Pipeline ──────────────────────────────────────────────────────────────────
+# Pipeline configuration is loaded from /usr/share/logstash/pipeline/ which is
+# volume-mounted from ./logstash/pipeline/ on the host.
+path.config: /usr/share/logstash/pipeline
+
+# Number of pipeline workers (default = number of CPU cores).
+# Set to 1 for a lightweight dev setup.
+pipeline.workers: 1
+
+# Batch size — how many events to collect before executing a filter/output cycle.
+pipeline.batch.size: 125
+
+# ── Monitoring ────────────────────────────────────────────────────────────────
+# Disable X-Pack monitoring for single-node development.
+monitoring.enabled: false
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+log.level: info

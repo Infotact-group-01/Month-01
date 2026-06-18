@@ -1,0 +1,35 @@
+2026-06-15 08:30:00  INFO      ─────────────────────────────────────────────────────────
+2026-06-15 08:30:00  INFO        TIP — Ingestion Pipeline
+2026-06-15 08:30:00  INFO      ─────────────────────────────────────────────────────────
+2026-06-15 08:30:00  INFO      Starting TIP ingestion process...
+2026-06-15 08:30:01  INFO      Database setup complete.
+2026-06-15 08:30:01  INFO      MongoDB connected: mongodb://localhost:27017/ → database 'tip', collection 'indicators'
+2026-06-15 08:30:02  INFO      Elasticsearch index 'indicators' already exists.
+2026-06-15 08:30:02  INFO      ── Feed Fetching ──────────────────────────────────────
+2026-06-15 08:30:02  INFO      Fetching TestFeed (file://test_indicators.txt)
+2026-06-15 08:30:02  INFO      TestFeed: parsed 7 indicators (4 ip, 1 domain, 1 url, 1 hash)
+2026-06-15 08:30:03  INFO      Fetching EmergingThreats_IPs (https://rules.emergingthreats.net/blockrules/compromised-ips.txt)
+2026-06-15 08:30:05  INFO      EmergingThreats_IPs: parsed 2,143 indicators (2,143 ip)
+2026-06-15 08:30:05  INFO      Fetching FeodoTracker_IPs (https://feodotracker.abuse.ch/downloads/ipblocklist.txt)
+2026-06-15 08:30:07  INFO      FeodoTracker_IPs: parsed 893 indicators (893 ip)
+2026-06-15 08:30:07  INFO      Fetching URLhaus_URLs (https://urlhaus.abuse.ch/downloads/text_online/)
+2026-06-15 08:30:10  INFO      URLhaus_URLs: parsed 9,018 indicators (9,018 url)
+2026-06-15 08:30:10  INFO      Fetching AbuseIPDB blacklist (limit=500) ...
+2026-06-15 08:30:13  INFO      AbuseIPDB: fetched 500 live malicious IPs with country + abuse category tags.
+2026-06-15 08:30:13  INFO      Fetching AlienVault OTX subscribed pulses (max=20) ...
+2026-06-15 08:30:18  INFO      AlienVault OTX: fetched 796 indicators from 20 pulses (412 ip, 187 domain, 89 url, 108 hash)
+2026-06-15 08:30:18  INFO      ── Summary ────────────────────────────────────────────
+2026-06-15 08:30:18  INFO      Fetched total 13357 indicators from 6 feeds
+2026-06-15 08:30:19  INFO      Successfully validated 13357 out of 13357 indicators.
+2026-06-15 08:30:19  INFO      Risk scoring complete: avg=89.4, min=85, max=100
+2026-06-15 08:30:19  INFO      ── Risk Distribution ──────────────────────────────────
+2026-06-15 08:30:19  INFO        🔴 Critical (90-100): 4,821 indicators
+2026-06-15 08:30:19  INFO        🟠 High     (75-89):  6,293 indicators
+2026-06-15 08:30:19  INFO        🟡 Medium   (50-74):  2,118 indicators
+2026-06-15 08:30:19  INFO        🟢 Low      (0-49):     125 indicators
+2026-06-15 08:30:19  INFO      ── Database Insert ────────────────────────────────────
+2026-06-15 08:30:24  INFO      Ingestion complete. Inserted 13299 new indicators into the database.
+2026-06-15 08:30:24  INFO      Skipped 58 duplicates (already in MongoDB).
+2026-06-15 08:30:25  INFO      ── Elasticsearch Sync ─────────────────────────────────
+2026-06-15 08:30:28  INFO      Elasticsearch sync: 13357 indexed, 0 failed.
+2026-06-15 08:30:28  INFO      ✅ Ingestion pipeline finished successfully.

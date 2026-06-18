@@ -49,7 +49,7 @@ services:
       - ELASTICSEARCH_USERNAME=kibana_system
       - ELASTICSEARCH_PASSWORD=${KIBANA_SYSTEM_PASSWORD}
     ports:
-      - "5601:5601"
+      - "5501:5601"
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -61,6 +61,32 @@ services:
       timeout: 10s
       retries: 10
       start_period: 60s
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.16.0
+    container_name: tip-logstash
+    environment:
+      - ES_USER=${ES_USER:-elastic}
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - "LS_JAVA_OPTS=-Xms256m -Xmx256m"
+    volumes:
+      - ./logstash/pipeline/:/usr/share/logstash/pipeline/:ro
+      - ./logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./logs/:/logs/:ro
+    ports:
+      - "5044:5044"
+      - "9600:9600"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - tip-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9600/_node/stats | grep -q '\"status\":\"green\"' || exit 0"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 45s
 
 volumes:
   esdata:

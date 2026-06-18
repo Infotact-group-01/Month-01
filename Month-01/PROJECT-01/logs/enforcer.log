@@ -1,0 +1,42 @@
+2026-06-15 09:00:01  INFO      =================================================================
+2026-06-15 09:00:01  INFO        TIP Policy Enforcer Daemon — Week 3
+2026-06-15 09:00:01  INFO        Threshold : risk_score >= 90
+2026-06-15 09:00:01  INFO        Interval  : every 60s
+2026-06-15 09:00:01  INFO        Mode      : SINGLE CYCLE [DRY-RUN MODE — no real firewall changes]
+2026-06-15 09:00:01  INFO      =================================================================
+2026-06-15 09:00:02  INFO      Connected to Elasticsearch 8.16.0 at http://localhost:9200
+2026-06-15 09:00:02  INFO      Loaded state: 0 IPs currently blocked.
+2026-06-15 09:00:03  INFO      Found 47 high-risk IPs (risk_score >= 90).
+2026-06-15 09:00:03  INFO      [DRY-RUN] Would run: netsh advfirewall firewall add rule name=TIP-BLOCK-185.220.101.45 protocol=any dir=in action=block remoteip=185.220.101.45 enable=yes description=Auto-blocked by TIP enforcer (risk >= 90)
+2026-06-15 09:00:03  INFO      [DRY-RUN] Would run: netsh advfirewall firewall add rule name=TIP-BLOCK-185.220.101.45-OUT protocol=any dir=out action=block remoteip=185.220.101.45 enable=yes description=Auto-blocked by TIP enforcer (risk >= 90)
+2026-06-15 09:00:03  INFO      [DRY-RUN] BLOCKED | IP=185.220.101.45    | risk= 95 | source=FeodoTracker_IPs | tags=[botnet]
+2026-06-15 09:00:03  INFO      [DRY-RUN] Would run: netsh advfirewall firewall add rule name=TIP-BLOCK-45.155.205.233 protocol=any dir=in action=block remoteip=45.155.205.233 enable=yes description=Auto-blocked by TIP enforcer (risk >= 90)
+2026-06-15 09:00:03  INFO      [DRY-RUN] Would run: netsh advfirewall firewall add rule name=TIP-BLOCK-45.155.205.233-OUT protocol=any dir=out action=block remoteip=45.155.205.233 enable=yes description=Auto-blocked by TIP enforcer (risk >= 90)
+2026-06-15 09:00:03  INFO      [DRY-RUN] BLOCKED | IP=45.155.205.233    | risk= 95 | source=EmergingThreats_IPs | tags=[malware, c2]
+2026-06-15 09:00:04  INFO      [DRY-RUN] Would run: netsh advfirewall firewall add rule name=TIP-BLOCK-194.26.135.119 protocol=any dir=in action=block remoteip=194.26.135.119 enable=yes description=Auto-blocked by TIP enforcer (risk >= 90)
+2026-06-15 09:00:04  INFO      [DRY-RUN] Would run: netsh advfirewall firewall add rule name=TIP-BLOCK-194.26.135.119-OUT protocol=any dir=out action=block remoteip=194.26.135.119 enable=yes description=Auto-blocked by TIP enforcer (risk >= 90)
+2026-06-15 09:00:04  INFO      [DRY-RUN] BLOCKED | IP=194.26.135.119    | risk= 95 | source=AbuseIPDB         | tags=[ssh-brute-force, brute-force]
+2026-06-15 09:00:04  INFO      [DRY-RUN] Would run: netsh advfirewall firewall add rule name=TIP-BLOCK-89.248.165.68 protocol=any dir=in action=block remoteip=89.248.165.68 enable=yes description=Auto-blocked by TIP enforcer (risk >= 90)
+2026-06-15 09:00:04  INFO      [DRY-RUN] Would run: netsh advfirewall firewall add rule name=TIP-BLOCK-89.248.165.68-OUT protocol=any dir=out action=block remoteip=89.248.165.68 enable=yes description=Auto-blocked by TIP enforcer (risk >= 90)
+2026-06-15 09:00:04  INFO      [DRY-RUN] BLOCKED | IP=89.248.165.68     | risk= 90 | source=EmergingThreats_IPs | tags=[scanner]
+2026-06-15 09:00:04  INFO      [DRY-RUN] Would run: netsh advfirewall firewall add rule name=TIP-BLOCK-103.75.201.2 protocol=any dir=in action=block remoteip=103.75.201.2 enable=yes description=Auto-blocked by TIP enforcer (risk >= 90)
+2026-06-15 09:00:04  INFO      [DRY-RUN] Would run: netsh advfirewall firewall add rule name=TIP-BLOCK-103.75.201.2-OUT protocol=any dir=out action=block remoteip=103.75.201.2 enable=yes description=Auto-blocked by TIP enforcer (risk >= 90)
+2026-06-15 09:00:04  INFO      [DRY-RUN] BLOCKED | IP=103.75.201.2      | risk=100 | source=AbuseIPDB         | tags=[malware, phishing]
+2026-06-15 09:00:05  INFO      [DRY-RUN] Would run: netsh advfirewall firewall add rule name=TIP-BLOCK-209.141.38.71 protocol=any dir=in action=block remoteip=209.141.38.71 enable=yes description=Auto-blocked by TIP enforcer (risk >= 90)
+2026-06-15 09:00:05  INFO      [DRY-RUN] Would run: netsh advfirewall firewall add rule name=TIP-BLOCK-209.141.38.71-OUT protocol=any dir=out action=block remoteip=209.141.38.71 enable=yes description=Auto-blocked by TIP enforcer (risk >= 90)
+2026-06-15 09:00:05  INFO      [DRY-RUN] BLOCKED | IP=209.141.38.71     | risk= 95 | source=FeodoTracker_IPs | tags=[emotet, c2]
+2026-06-15 09:00:05  INFO      [DRY-RUN] Would run: netsh advfirewall firewall add rule name=TIP-BLOCK-171.25.193.9 protocol=any dir=in action=block remoteip=171.25.193.9 enable=yes description=Auto-blocked by TIP enforcer (risk >= 90)
+2026-06-15 09:00:05  INFO      [DRY-RUN] Would run: netsh advfirewall firewall add rule name=TIP-BLOCK-171.25.193.9-OUT protocol=any dir=out action=block remoteip=171.25.193.9 enable=yes description=Auto-blocked by TIP enforcer (risk >= 90)
+2026-06-15 09:00:05  INFO      [DRY-RUN] BLOCKED | IP=171.25.193.9      | risk= 90 | source=EmergingThreats_IPs | tags=[tor-exit]
+2026-06-15 09:00:06  INFO      [DRY-RUN] Would run: netsh advfirewall firewall add rule name=TIP-BLOCK-46.161.27.117 protocol=any dir=in action=block remoteip=46.161.27.117 enable=yes description=Auto-blocked by TIP enforcer (risk >= 90)
+2026-06-15 09:00:06  INFO      [DRY-RUN] Would run: netsh advfirewall firewall add rule name=TIP-BLOCK-46.161.27.117-OUT protocol=any dir=out action=block remoteip=46.161.27.117 enable=yes description=Auto-blocked by TIP enforcer (risk >= 90)
+2026-06-15 09:00:06  INFO      [DRY-RUN] BLOCKED | IP=46.161.27.117     | risk= 95 | source=AbuseIPDB         | tags=[ransomware, lockbit]
+2026-06-15 09:00:06  INFO      [DRY-RUN] Would run: netsh advfirewall firewall add rule name=TIP-BLOCK-198.98.51.189 protocol=any dir=in action=block remoteip=198.98.51.189 enable=yes description=Auto-blocked by TIP enforcer (risk >= 90)
+2026-06-15 09:00:06  INFO      [DRY-RUN] Would run: netsh advfirewall firewall add rule name=TIP-BLOCK-198.98.51.189-OUT protocol=any dir=out action=block remoteip=198.98.51.189 enable=yes description=Auto-blocked by TIP enforcer (risk >= 90)
+2026-06-15 09:00:06  INFO      [DRY-RUN] BLOCKED | IP=198.98.51.189     | risk= 90 | source=FeodoTracker_IPs | tags=[qakbot]
+2026-06-15 09:00:07  INFO      [DRY-RUN] Would run: netsh advfirewall firewall add rule name=TIP-BLOCK-77.247.181.163 protocol=any dir=in action=block remoteip=77.247.181.163 enable=yes description=Auto-blocked by TIP enforcer (risk >= 90)
+2026-06-15 09:00:07  INFO      [DRY-RUN] Would run: netsh advfirewall firewall add rule name=TIP-BLOCK-77.247.181.163-OUT protocol=any dir=out action=block remoteip=77.247.181.163 enable=yes description=Auto-blocked by TIP enforcer (risk >= 90)
+2026-06-15 09:00:07  INFO      [DRY-RUN] BLOCKED | IP=77.247.181.163    | risk= 90 | source=EmergingThreats_IPs | tags=[tor-exit, scanner]
+2026-06-15 09:00:07  INFO      Cycle #1 done: 10 newly blocked | 37 already blocked | 47 total
+2026-06-15 09:00:07  INFO      ✅ Cycle complete: 10 newly blocked, 37 already blocked.
+2026-06-15 09:00:07  INFO      📋 Total blocked : 47 IPs

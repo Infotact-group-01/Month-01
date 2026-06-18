@@ -97,7 +97,7 @@ PROJECT-01/
 ├── 📄 .env                    ← Secret settings (database URLs etc.)
 ├── 📄 feeds.json              ← List of threat feed sources
 ├── 📄 requirements.txt        ← Python packages this project needs
-├── 📄 docker-compose.yml      ← Starts Elasticsearch + Kibana via Docker
+├── 📄 docker-compose.yml      ← Starts Elasticsearch + Logstash + Kibana via Docker
 │
 ├── 📁 src/                    ← All Python source code
 │   ├── __init__.py            ← Marks this folder as a Python package
@@ -106,16 +106,41 @@ PROJECT-01/
 │   ├── fetch_feeds.py         ← Downloads and parses threat feeds
 │   ├── db.py                  ← Saves data into MongoDB
 │   ├── es_client.py           ← Saves data into Elasticsearch
-│   └── ingest.py              ← The MASTER script — runs the full pipeline
+│   ├── ingest.py              ← The MASTER script — runs the full pipeline
+│   ├── enforcer.py            ← Week 3: Policy Enforcer Daemon (auto-blocking)
+│   ├── rollback_api.py        ← Week 4: Flask REST API for SOC rollback control
+│   ├── cli.py                 ← CLI interface for the platform
+│   └── utils.py               ← Shared utilities (IP validation, IOC classification)
+│
+├── 📁 logstash/               ← Logstash configuration for log shipping
+│   ├── logstash.yml           ← Logstash settings (HTTP host, pipeline path)
+│   └── pipeline/
+│       └── logstash.conf      ← Pipeline config: parses enforcer/rollback/ingestion logs → ES
+│
+├── 📁 logs/                   ← Auto-created: audit logs from all TIP components
+│   ├── enforcer.log           ← Enforcer daemon audit trail (block actions)
+│   ├── rollback.log           ← Rollback API audit trail (analyst unblock actions)
+│   └── ingestion.log          ← Ingestion pipeline run log (feed fetching, DB insert)
 │
 ├── 📁 tests/                  ← Automated tests to verify everything works
 │   ├── conftest.py            ← Shared test setup
 │   ├── test_models.py         ← Tests the data model and risk scoring
 │   ├── test_fetch_feeds.py    ← Tests the feed fetching logic
-│   └── test_db.py             ← Tests the database layer
+│   ├── test_db.py             ← Tests the database layer
+│   ├── test_enforcer.py       ← Tests the policy enforcer logic
+│   ├── test_rollback_api.py   ← Tests the rollback REST API
+│   └── test_utils.py          ← Tests shared utilities
+│
+├── 📁 kibana/                 ← Pre-built Kibana dashboard
+│   └── dashboard_export.ndjson ← Import into Kibana for instant visualisation
+│
+├── 📁 data/                   ← Demo datasets
+│   └── demo_dataset.json      ← 54 hand-crafted realistic demo indicators
 │
 ├── 📄 SCHEMA.md               ← Detailed database schema documentation
 ├── 📄 README.md               ← Short quick-start guide
+├── 📄 PROJECT_GUIDE.md        ← Complete client-facing project explanation
+├── 📄 PROJECT_SUMMARY.md      ← Week 3 summary and next steps
 └── 📄 Week1_Plan.md           ← Week 1 objectives and milestones
 ```
 
@@ -259,17 +284,25 @@ The index uses the following field mappings:
 ---
 
 #### ELK Stack via Docker (`docker-compose.yml`)
-The SIEM runs entirely inside Docker — no manual installation needed. Just one command starts both services:
+The SIEM runs entirely inside Docker — no manual installation needed. Just one command starts all services:
 
 ```
-┌─────────────────────┐    ┌────────────────────┐
-│   Elasticsearch      │    │       Kibana        │
-│   Port: 9200        │◄───│   Port: 5601        │
-│   (data store)      │    │   (visual UI)       │
-└─────────────────────┘    └────────────────────┘
+┌─────────────────────┐    ┌────────────────────┐    ┌────────────────────┐
+│   Elasticsearch      │    │      Logstash       │    │       Kibana        │
+│   Port: 9200        │◄───│   Port: 5044/9600   │    │   Port: 5501        │
+│   (data store)      │    │   (log pipeline)    │    │   (visual UI)       │
+└──────────┬──────────┘    └────────────────────┘    └────────┬───────────┘
+           │                                                  │
+           └──────────────────────────────────────────────────┘
+                              (queries ES data)
 ```
 
-Both are version **8.16.0** — the same version as the images already on your Docker Desktop.
+- **Elasticsearch** — stores and indexes all threat indicators + audit logs
+- **Logstash** — tails `enforcer.log`, `rollback.log`, and `ingestion.log`, parses them
+  into structured events, and ships them to the `tip-audit-logs` ES index
+- **Kibana** — visual dashboard for searching, filtering, and charting threat data
+
+All three are version **8.16.0** — the same version as the images already on your Docker Desktop.
 
 ---
 
@@ -296,7 +329,7 @@ Elasticsearch:     12,357 indexed, 0 failed ✅
 | Risk score schema added | `risk_score` field on every indicator |
 | Risk calculation logic | `calculate_risk()` method implemented |
 | Elasticsearch running | Docker container `tip-elasticsearch:9200` ✅ |
-| Kibana running | Docker container `tip-kibana:5601` ✅ |
+| Kibana running | Docker container `tip-kibana:5501` ✅ |
 | Indicators indexed in ES | 12,357 records fully indexed ✅ |
 | Zero sync failures | `0 failed` in bulk indexing ✅ |
 
@@ -352,9 +385,9 @@ ELASTICSEARCH_URI=http://localhost:9200
 
 ---
 
-### Step 4 — Start the ELK Stack (Elasticsearch + Kibana)
+### Step 4 — Start the ELK Stack (Elasticsearch + Logstash + Kibana)
 
-This single command downloads (or reuses) the Docker images and starts both services in the background:
+This single command downloads (or reuses) the Docker images and starts all services in the background:
 
 ```powershell
 docker-compose up -d
@@ -362,11 +395,15 @@ docker-compose up -d
 
 Expected output:
 ```
+✔ Container tip-mongodb        Started
 ✔ Container tip-elasticsearch  Started
+✔ Container tip-logstash       Started
 ✔ Container tip-kibana         Started
 ```
 
-> 💡 Wait about **60 seconds** after this before running the pipeline — Kibana needs time to initialize.
+> 💡 Wait about **60 seconds** after this before running the pipeline — Kibana and Logstash need time to initialize.
+
+**What Logstash does:** It automatically watches the `logs/` directory and ships all enforcer, rollback, and ingestion log entries into Elasticsearch (index: `tip-audit-logs`), so you can search and visualize operational events alongside threat data in Kibana.
 
 ---
 
@@ -441,7 +478,7 @@ pytest tests/
 
 Expected result:
 ```
-42 passed in 2.37s
+161 passed in 0.80s
 ```
 
 ---
@@ -451,7 +488,7 @@ Expected result:
 ### Open Kibana
 Open your web browser and go to:
 
-**👉 [http://localhost:5601](http://localhost:5601)**
+**👉 [http://localhost:5501](http://localhost:5501)**
 
 ---
 
@@ -561,7 +598,7 @@ Every single threat indicator stored in the system follows this exact structure:
 
 ## 12. Testing
 
-The project includes **42 automated tests** that verify every layer works correctly:
+The project includes **161 automated tests** that verify every layer works correctly:
 
 ```powershell
 pytest tests/ -v
@@ -572,7 +609,7 @@ pytest tests/ -v
 | `test_models.py` | Data validation, risk scoring, field defaults | 13 |
 | `test_fetch_feeds.py` | Feed fetching, IOC classification, parsing | 24 |
 | `test_db.py` | MongoDB setup, insert, deduplication | 5 |
-| **Total** | | **42 ✅** |
+| **Total** | | **161 ✅** |
 
 ### What The Tests Verify
 
@@ -604,7 +641,7 @@ pytest tests/ -v
 **Solution:**
 1. Ensure Docker Desktop is running (check the taskbar)
 2. Try `docker-compose down` then `docker-compose up -d` again
-3. Ensure ports `9200` and `5601` are not used by another application
+3. Ensure ports `9200` and `5501` are not used by another application
 
 ---
 
@@ -647,10 +684,10 @@ Review the failed test output — most failures will show the exact line and ass
 | Risk scoring schema | `risk_score` field (0–100) on every indicator |
 | Risk calculation | Heuristic based on confidence + tags + source weight |
 | Elasticsearch setup | Docker container, port 9200, v8.16.0 |
-| Kibana SIEM | Docker container, port 5601, visual dashboard |
+| Kibana SIEM | Docker container, port 5501, visual dashboard |
 | Dual-write pipeline | Every indicator → MongoDB **and** Elasticsearch |
 | ES sync result | **12,357 indexed, 0 failed** ✅ |
-| Automated tests | **42 tests, all passing** ✅ |
+| Automated tests | **161 tests, all passing** ✅ |
 
 ---
 
